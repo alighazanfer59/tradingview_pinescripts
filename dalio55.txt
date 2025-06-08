@@ -1,0 +1,105 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © pidepython / https://www.fiverr.com/alighazanfer59/build-algotrading-backtesting-screening-data-tools
+// System Rules:
+// Indicators: Tasc 2023.07 Keeping with The Larger Trend
+// Entry Signal: A buy signal is given when the indicator changes color from red to green, and vice versa for a sell order. A buy order is executed immediately after the first 1-minute candle leading to the colour change from red to green closes.
+// Order Size: 2 Contracts (Adjustable)
+// Take Profit 1 (TP1): 20 Points (Adjustable)
+// Take Profit 2 (TP2): 40 Points (Adjustable)
+// Stop loss (SL):  20 points
+// Breakeven (BE): Move SL to 3 Points (Adjustable) in profit after TP1 is hit
+// Other exit conditions: Immediately close position if trend changes and the trade is still open.
+// Additional feature: Adjustable Daily/session profit target and loss targets.
+
+//@version=5
+strategy("Supertrend Trading Bot", overlay=true, default_qty_type=strategy.fixed, default_qty_value=2)
+
+// Input parameters
+i_atrLength = input.int(10, "ATR Length", minval=1)
+i_mult = input.float(3.0, "Multiplier", minval=0.1, step=0.1)
+i_contracts = input.int(2, "Contract Quantity", minval=2, step = 2)
+i_tp1_pts = input.int(20, "Take Profit Points", minval=1)
+i_tp2_pts = input.int(40, "Take Profit Points", minval=2)
+i_slPoints = input.int(20, "Stop Loss Points", minval=1)
+i_breakeven_pts = input.int(3, "Breakeven Points", minval=0)
+
+
+
+// Plot Supertrend
+// plot(supertrend, "Supertrend", trendColor, 2, plot.style_linebr)
+
+[st, dir] = ta.supertrend(i_mult, i_atrLength)
+plot(dir < 0 ? st : na, "Up direction", color = color.green, style=plot.style_linebr)
+plot(dir > 0 ? st : na, "Down direction", color = color.red, style=plot.style_linebr)
+
+// Trading signals
+buySignal = dir == -1 and dir[1] == 1
+sellSignal = dir == 1 and dir[1] == -1
+
+// Save stops & targets
+var float tradeStop = na
+var float tradeTarget1 = na
+var float tradeTarget2 = na
+var float tradeSize = na
+
+// tp_long = close + i_tpPoints
+// sl_long = close - i_slPoints
+
+// tp_short = close - i_tpPoints
+// sl_short = close + i_slPoints
+
+// Strategy execution
+if buySignal
+    strategy.close_all()
+    strategy.entry("Long", strategy.long, qty=i_contracts)
+    tradeStop := na
+    tradeTarget1 := na
+    tradeTarget2 := na
+    // strategy.exit("Long Exit", "Long", limit=tp_long, stop=sl_long)
+
+if sellSignal
+    strategy.close_all()
+    strategy.entry("Short", strategy.short, qty=i_contracts)
+    tradeStop := na
+    tradeTarget1 := na
+    tradeTarget2 := na
+    // strategy.exit("Short Exit", "Short", limit=tp_short, stop=sl_short)
+
+// Handle long stops & target calculation
+if strategy.position_size > 0 and na(tradeStop)
+    tradeStop := strategy.position_avg_price - i_slPoints
+    tradeTarget1 := strategy.position_avg_price + i_tp1_pts
+    tradeTarget2 := strategy.position_avg_price + i_tp2_pts
+    tradeSize := strategy.position_size
+
+// Handle short stops & target calculation
+if strategy.position_size < 0 and na(tradeStop) and syminfo.type != "forex"
+    tradeStop := strategy.position_avg_price + i_slPoints
+    tradeTarget1 := strategy.position_avg_price - i_tp1_pts
+    tradeTarget2 := strategy.position_avg_price - i_tp2_pts
+    tradeSize := strategy.position_size
+
+// Handle trade exits
+strategy.exit(id="Long Exit #1",  from_entry="Long",  limit=tradeTarget1, stop=tradeStop, qty_percent=i_contracts/2)
+strategy.exit(id="Long Exit #2",  from_entry="Long",  limit=tradeTarget2, stop=tradeStop, qty_percent=100)
+strategy.exit(id="Short Exit #1", from_entry="Short", limit=tradeTarget1, stop=tradeStop, qty_percent=i_contracts/2)
+strategy.exit(id="Short Exit #2", from_entry="Short", limit=tradeTarget2, stop=tradeStop, qty_percent=100)
+
+// Handle both long & short trade break-even stops (do this AFTER first position has exited above ^)
+if strategy.position_size != tradeSize
+    tradeStop := strategy.position_avg_price + i_breakeven_pts
+    tradeTarget1 := na
+
+// Plot entry markers
+plotshape(buySignal, title="Buy Signal", text="BUY", 
+  style=shape.labelup, location=location.belowbar, 
+  color=color.new(color.green, 0), textcolor=color.white, size=size.small)
+
+plotshape(sellSignal, title="Sell Signal", text="SELL", 
+  style=shape.labeldown, location=location.abovebar, 
+  color=color.new(color.red, 0), textcolor=color.white, size=size.small)
+
+// Draw stops & targets
+plot(strategy.position_size != 0 ? tradeStop : na,   color=color.red,   style=plot.style_linebr, title="Stop Loss")
+plot(strategy.position_size != 0 ? tradeTarget1 : na, color=color.green, style=plot.style_linebr, title="Profit Target 1")
+plot(strategy.position_size != 0 ? tradeTarget2 : na, color=color.green, style=plot.style_linebr, title="Profit Target 2")
