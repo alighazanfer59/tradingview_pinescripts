@@ -1,0 +1,228 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © Hiubris_Indicators
+
+//@version=5
+strategy(title = "The Sauce! Strategy", overlay = true, default_qty_value = 100, initial_capital=250000,default_qty_type=strategy.percent_of_equity, pyramiding=0, process_orders_on_close=true)
+
+
+// Supertrend
+Periods = input(title='ATR Period', defval=20, group='The Goods')
+src = input(hl2, title='Source', group='The Goods')
+Multiplier = input.float(title='ATR Multiplier', step=0.1, defval=1.8, group='The Goods')
+changeATR = input(title='Change ATR Calculation Method ?', defval=true, group='The Goods')
+atr2 = ta.sma(ta.tr, Periods)
+atr = changeATR ? ta.atr(Periods) : atr2
+up = src - Multiplier * atr
+up1 = nz(up[1], up)
+up := close[1] > up1 ? math.max(up, up1) : up
+dn = src + Multiplier * atr
+dn1 = nz(dn[1], dn)
+dn := close[1] < dn1 ? math.min(dn, dn1) : dn
+trend = 1
+trend := nz(trend[1], trend)
+trend := trend == -1 and close > dn1 ? 1 : trend == 1 and close < up1 ? -1 : trend
+
+buySignal = trend == 1 and trend[1] == -1
+sellSignal = trend == -1 and trend[1] == 1
+
+use_adx_barcolor = input(true, title='Show Bar Color', group='Trend Sauce')
+adxFunction()=>
+    len     = input.int(7, minval=1, title="DI Length", group='DI')
+    up      = ta.change(high)
+    down    = -ta.change(low)
+    plusDM  = na(up) ? na : (up > down and up > 0 ? up : 0)
+    minusDM = na(down) ? na : (down > up and down > 0 ? down : 0)
+    trur = ta.rma(ta.tr, len)
+    plus = fixnan(100 * ta.rma(plusDM, len) / trur)
+    minus = fixnan(100 * ta.rma(minusDM, len) / trur)
+    side = plus>minus? 1 : -1
+    side
+adx_side = adxFunction()
+barcolor(use_adx_barcolor and adx_side==1?color.rgb(33, 250, 4):use_adx_barcolor and adx_side==-1?color.rgb(255, 1, 1):na, title="Trend Sauce Bar Color")
+
+// Trading Session
+tz0 = input.string('UTC-4', title="Timezone", inline='tz'   , group='General Settings')
+auto_tz = input(false, title="Use Exchange Timezone instead (Auto)", group='General Settings')
+tz = auto_tz? syminfo.timezone : tz0
+
+in_session(sess) => 
+    t = time(timeframe.period, sess, tz)
+    r = na(t) ? false : true
+    r
+    
+session = input.session("1000-1457", title="Trading Session")+":1234567"
+
+trading_session_filter = in_session(session)
+
+// ————— Days of the Week Filter
+day_grp = "Trading Days of Week"
+use_mon = input(true, title="Monday  "    , inline="1", group=day_grp)
+use_tue = input(true, title="Tuesday  "   , inline="1", group=day_grp)
+use_wed = input(true, title="Wednesday  " , inline="1", group=day_grp)
+use_thu = input(true, title="Thursday"    , inline="1", group=day_grp)
+use_fri = input(true, title="Friday  "    , inline="2", group=day_grp)
+use_sat = input(true, title="Saturday  "  , inline="2", group=day_grp)
+use_sun = input(true, title="Sunday  "    , inline="2", group=day_grp)
+
+monX = use_mon and dayofweek == dayofweek.monday    
+tueX = use_tue and dayofweek == dayofweek.tuesday   
+wedX = use_wed and dayofweek == dayofweek.wednesday      
+thuX = use_thu and dayofweek == dayofweek.thursday      
+friX = use_fri and dayofweek == dayofweek.friday    
+satX = use_sat and dayofweek == dayofweek.saturday      
+sunX = use_sun and dayofweek == dayofweek.sunday    
+
+trading_days = monX or tueX or wedX or thuX or friX or satX or sunX
+
+
+long = buySignal  and adx_side== 1 and trading_days and trading_session_filter
+short= sellSignal and adx_side==-1 and trading_days and trading_session_filter
+
+// Position Management Tools
+pos = 0.0
+pos:= long? 1 : short? -1 : pos[1]
+
+longCond  = long  and (pos[1]!= 1 or na(pos[1]))
+shortCond = short and (pos[1]!=-1 or na(pos[1]))
+
+use_exit = input(true, title='Use Existing strategy Exit rule')
+long_exit = sellSignal and adx_side== 1 and pos[1]== 1 and not shortCond and use_exit
+short_exit= buySignal  and adx_side==-1 and pos[1]==-1 and not longCond  and use_exit
+
+if (long_exit  and not shortCond) or (short_exit and not longCond)
+    pos:=0
+
+
+// EXIT FUNCTIONS //
+qty = input(8, title='Entry QTY')
+i_sl  = input.float(75.0, title="Stop Loss (Ticks)", minval=0)
+i_tp1  = input.float(200.0, title="Take Profit 1 (Ticks)", minval=0)
+i_tp2  = input.float(225.0, title="Take Profit 2 (Ticks)", minval=0)
+i_tp3 = input.float(250.0, title="Take Profit 3 (Ticks)", minval=0)
+i_tp4  = input.float(275.0, title="Take Profit 4 (Ticks)", minval=0)
+i_be  = input.float(150.0, title="BreakEven (Ticks)", minval=0)
+
+perc_tp1 = input(25.0, title='TP 1 Qty %')
+perc_tp2 = input(25.0, title='TP 2 Qty %')
+perc_tp3 = input(25.0, title='TP 3 Qty %')
+perc_tp4 = input(25.0, title='TP 4 Qty %')
+
+sl  = i_sl >0 ? i_sl *syminfo.mintick : 99999
+plot(syminfo.mintick, "mintick")
+tp1  = i_tp1 >0 ? i_tp1 *syminfo.mintick : 99999
+tp2  = i_tp2 >0 ? i_tp2 *syminfo.mintick : 99999
+tp3  = i_tp1 >0 ? i_tp3 *syminfo.mintick : 99999
+tp4  = i_tp2 >0 ? i_tp4 *syminfo.mintick : 99999
+be  = i_be >0 ? i_be *syminfo.mintick : 99999
+
+long_entry  = ta.valuewhen(longCond , close, 0)
+short_entry = ta.valuewhen(shortCond, close, 0)
+
+
+// Simple Stop Loss + 4 Take Profits
+sl_long   = long_entry  - sl
+sl_short  = short_entry + sl
+
+tp1_long  = long_entry   + tp1
+tp1_short = short_entry  - tp1
+
+tp2_long  = long_entry   + tp2
+tp2_short = short_entry  - tp2
+
+tp3_long  = long_entry   + tp3
+tp3_short = short_entry  - tp3
+
+tp4_long  = long_entry   + tp4
+tp4_short = short_entry  - tp4
+
+
+// Inprofit
+be_long  = long_entry   + be
+be_short = short_entry  - be
+inprofit_long  = 0
+inprofit_short = 0
+inprofit_long  := pos==0 or longCond ? 0 : high>be_long [1]? 1 : inprofit_long[1]
+inprofit_short := pos==0 or shortCond? 0 : low <be_short[1]? 1 : inprofit_short[1]
+
+sl_long  := inprofit_long ==1 ? long_entry  : sl_long 
+sl_short := inprofit_short==1 ? short_entry : sl_short
+
+pre_long_tp1  = 0.0 , pre_long_tp2  = 0.0 , pre_long_tp3  = 0.0 , pre_long_tp4  = 0.0 
+pre_short_tp1 = 0.0 , pre_short_tp2 = 0.0 , pre_short_tp3 = 0.0 , pre_short_tp4 = 0.0 
+
+
+
+pre_long_tp1 := longCond? 1 : (high>tp1_long [1])? 0 : pre_long_tp1[1]
+pre_long_tp2 := longCond? 1 : (high>tp2_long [1])? 0 : pre_long_tp2[1]
+pre_long_tp3 := longCond? 1 : (high>tp3_long [1])? 0 : pre_long_tp3[1]
+pre_long_tp4 := longCond? 1 : (high>tp4_long [1])? 0 : pre_long_tp4[1]
+
+pre_short_tp1 := shortCond? 1 : (low<tp1_short[1])? 0 : pre_short_tp1[1]
+pre_short_tp2 := shortCond? 1 : (low<tp2_short[1])? 0 : pre_short_tp2[1]
+pre_short_tp3 := shortCond? 1 : (low<tp3_short[1])? 0 : pre_short_tp3[1]
+pre_short_tp4 := shortCond? 1 : (low<tp4_short[1])? 0 : pre_short_tp4[1]
+
+long_tp1 = high>tp1_long[1] and pre_long_tp1[1]==1 and pos[1]==1
+long_tp2 = high>tp2_long[1] and pre_long_tp2[1]==1 and pos[1]==1
+long_tp3 = high>tp3_long[1] and pre_long_tp3[1]==1 and pos[1]==1
+long_tp4 = high>tp4_long[1] and pre_long_tp4[1]==1 and pos[1]==1
+
+short_tp1 = low<tp1_short[1] and pre_short_tp1[1]==1 and pos[1]==-1
+short_tp2 = low<tp2_short[1] and pre_short_tp2[1]==1 and pos[1]==-1
+short_tp3 = low<tp3_short[1] and pre_short_tp3[1]==1 and pos[1]==-1
+short_tp4 = low<tp4_short[1] and pre_short_tp4[1]==1 and pos[1]==-1
+
+
+sum_tp4 = perc_tp1 + perc_tp2 + perc_tp3 + perc_tp4
+sum_tp3 = perc_tp1 + perc_tp2 + perc_tp3
+sum_tp2 = perc_tp1 + perc_tp2
+sum_tp1 = perc_tp1
+perc_tp1_strat = sum_tp1>=100? 100 : perc_tp1
+perc_tp2_strat = sum_tp2>=100? 100 : perc_tp2
+perc_tp3_strat = sum_tp3>=100? 100 : perc_tp3
+perc_tp4_strat = sum_tp4>=100? 100 : perc_tp4
+
+last_tp_long  = sum_tp4>=100? tp1_long  : sum_tp1>=100? tp1_long  : 99999
+last_tp_short = sum_tp4>=100? tp4_short : sum_tp1>=100? tp4_short : 0
+
+
+// Position Adjustment
+long_sl  = low <sl_long[1]  and pos[1]==1
+short_sl = high>sl_short[1] and pos[1]==-1
+
+final_long_tp  = high>last_tp_long[1]  and pos[1]==1
+final_short_tp = low <last_tp_short[1] and pos[1]==-1
+
+if ((long_sl or final_long_tp) and not shortCond) or ((short_sl or final_short_tp) and not longCond)
+    pos:=0
+    
+//  Strategy Backtest Limiting Algorithm
+i_startTime = input.time(defval = timestamp("01 Sep 2002 13:30 +0000"), title = "Backtesting Start Time")
+i_endTime   = input.time(defval = timestamp("30 Sep 2099 19:30 +0000"), title = "Backtesting End Time"  )
+timeCond   = (time > i_startTime) and (time < i_endTime)
+
+equity = strategy.initial_capital + strategy.netprofit
+
+if equity>0 and timeCond
+    if longCond
+        strategy.entry("long" , strategy.long , qty=qty)
+    if shortCond
+        strategy.entry("short", strategy.short, qty=qty)
+    
+    strategy.exit("SL/TP1", from_entry = "long" , stop=sl_long , limit=tp1_long , comment_profit ='TP1', comment_loss='SL', qty_percent=perc_tp1)
+    strategy.exit("SL/TP1", from_entry = "short", stop=sl_short, limit=tp1_short, comment_profit ='TP1', comment_loss='SL', qty_percent=perc_tp1)
+
+    strategy.exit("SL/TP2", from_entry = "long" , stop=sl_long , limit=tp2_long , comment_profit ='TP2', comment_loss='SL', qty_percent=perc_tp2)
+    strategy.exit("SL/TP2", from_entry = "short", stop=sl_short, limit=tp2_short, comment_profit ='TP2', comment_loss='SL', qty_percent=perc_tp2)
+
+    strategy.exit("SL/TP3", from_entry = "long" , stop=sl_long , limit=tp3_long , comment_profit ='TP3', comment_loss='SL', qty_percent=perc_tp3)
+    strategy.exit("SL/TP3", from_entry = "short", stop=sl_short, limit=tp3_short, comment_profit ='TP3', comment_loss='SL', qty_percent=perc_tp3)
+
+    strategy.exit("SL/TP4", from_entry = "long" , stop=sl_long , limit=tp4_long , comment_profit ='TP4', comment_loss='SL', qty_percent=perc_tp4)
+    strategy.exit("SL/TP4", from_entry = "short", stop=sl_short, limit=tp4_short, comment_profit ='TP4', comment_loss='SL', qty_percent=perc_tp4)
+
+
+if long_exit and timeCond
+    strategy.close("long" , comment="Exit")
+if short_exit and timeCond
+    strategy.close("short", comment="Exit")
