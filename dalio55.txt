@@ -12,7 +12,7 @@
 // Additional feature: Adjustable Daily/session profit target and loss targets.
 
 //@version=5
-strategy("Supertrend Trading Bot", overlay=true, default_qty_type=strategy.fixed, default_qty_value=2)
+strategy("Supertrend Trading Bot", overlay=true, default_qty_type=strategy.fixed, default_qty_value=2, initial_capital = 10000)
 
 // Input parameters
 i_atrLength = input.int(10, "ATR Length", minval=1)
@@ -22,8 +22,8 @@ i_tp1_pts = input.int(20, "Take Profit Points", minval=1)
 i_tp2_pts = input.int(40, "Take Profit Points", minval=2)
 i_slPoints = input.int(20, "Stop Loss Points", minval=1)
 i_breakeven_pts = input.int(3, "Breakeven Points", minval=0)
-i_daily_profit_target = input.int(10000, "Daily Profit Target", minval=20)
-i_daily_loss_limit = input.int(100000, "Daily Loss Limit", minval=20)
+i_daily_profit_target = input.float(10000.0, "Daily Profit Target (USD)", minval=20.0)
+i_daily_loss_limit = input.float(100000.0, "Daily Loss Limit (USD)", minval=20.0)
 
 // === Daily PnL Tracking Based on End-of-Day Equity === //
 var float equity_at_yesterday_close = na
@@ -42,10 +42,10 @@ if is_new_day
 // Update daily_pnl continuously throughout the day
 daily_pnl := strategy.equity - equity_at_today_open
 
-plot(is_new_day, 'Daily PNL', color.black)
+plot(daily_pnl, 'Daily PNL', color.black)
 
 // Disable trading if outside limits
-can_trade_today := (daily_pnl < i_daily_profit_target) and (daily_pnl > i_daily_loss_limit)
+can_trade_today := (daily_pnl < i_daily_profit_target) and (daily_pnl > -i_daily_loss_limit)
 
 // ======================================= INDICATOR CODE ============================================
 // Plot Supertrend
@@ -56,8 +56,11 @@ plot(dir < 0 ? st : na, "Up direction", color = color.green, style=plot.style_li
 plot(dir > 0 ? st : na, "Down direction", color = color.red, style=plot.style_linebr)
 
 // Trading signals
-buySignal = dir == -1 and dir[1] == 1 
-sellSignal = dir == 1 and dir[1] == -1
+buyCondition = dir == -1 and dir[1] == 1 
+sellConditon = dir == 1 and dir[1] == -1
+
+buySignal = buyCondition and can_trade_today
+sellSignal = sellConditon and can_trade_today
 
 // Save stops & targets
 var float tradeStop = na
@@ -126,3 +129,4 @@ plotshape(sellSignal, title="Sell Signal", text="SELL",
 plot(strategy.position_size != 0 ? tradeStop : na,   color=color.red,   style=plot.style_linebr, title="Stop Loss")
 plot(strategy.position_size != 0 ? tradeTarget1 : na, color=color.green, style=plot.style_linebr, title="Profit Target 1")
 plot(strategy.position_size != 0 ? tradeTarget2 : na, color=color.green, style=plot.style_linebr, title="Profit Target 2")
+
