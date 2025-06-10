@@ -22,9 +22,32 @@ i_tp1_pts = input.int(20, "Take Profit Points", minval=1)
 i_tp2_pts = input.int(40, "Take Profit Points", minval=2)
 i_slPoints = input.int(20, "Stop Loss Points", minval=1)
 i_breakeven_pts = input.int(3, "Breakeven Points", minval=0)
+i_daily_profit_target = input.int(10000, "Daily Profit Target", minval=20)
+i_daily_loss_limit = input.int(100000, "Daily Loss Limit", minval=20)
 
+// === Daily PnL Tracking Based on End-of-Day Equity === //
+var float equity_at_yesterday_close = na
+var float equity_at_today_open = na
+var float daily_pnl = 0.0
+var bool can_trade_today = true
 
+// Detect new day by change in dayofyear
+var int last_day = dayofmonth
+bool is_new_day = dayofmonth != last_day
+if is_new_day
+    equity_at_yesterday_close := nz(strategy.equity[1])
+    equity_at_today_open := strategy.equity
+    last_day := dayofmonth
 
+// Update daily_pnl continuously throughout the day
+daily_pnl := strategy.equity - equity_at_today_open
+
+plot(is_new_day, 'Daily PNL', color.black)
+
+// Disable trading if outside limits
+can_trade_today := (daily_pnl < i_daily_profit_target) and (daily_pnl > i_daily_loss_limit)
+
+// ======================================= INDICATOR CODE ============================================
 // Plot Supertrend
 // plot(supertrend, "Supertrend", trendColor, 2, plot.style_linebr)
 
@@ -33,7 +56,7 @@ plot(dir < 0 ? st : na, "Up direction", color = color.green, style=plot.style_li
 plot(dir > 0 ? st : na, "Down direction", color = color.red, style=plot.style_linebr)
 
 // Trading signals
-buySignal = dir == -1 and dir[1] == 1
+buySignal = dir == -1 and dir[1] == 1 
 sellSignal = dir == 1 and dir[1] == -1
 
 // Save stops & targets
@@ -73,7 +96,7 @@ if strategy.position_size > 0 and na(tradeStop)
     tradeSize := strategy.position_size
 
 // Handle short stops & target calculation
-if strategy.position_size < 0 and na(tradeStop) and syminfo.type != "forex"
+if strategy.position_size < 0 and na(tradeStop)
     tradeStop := strategy.position_avg_price + i_slPoints
     tradeTarget1 := strategy.position_avg_price - i_tp1_pts
     tradeTarget2 := strategy.position_avg_price - i_tp2_pts
