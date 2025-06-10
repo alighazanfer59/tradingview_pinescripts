@@ -64,8 +64,8 @@ plot(dir < 0 ? st : na, "Up direction", color = color.green, style=plot.style_li
 plot(dir > 0 ? st : na, "Down direction", color = color.red, style=plot.style_linebr, linewidth = 3)
 
 // Trading signals
-buyCondition = isNewTrend and dir < 0 and dir[1] > 0
-sellConditon = isNewTrend and dir > 0 and dir[1] < 0
+buyCondition = isNewTrend and dir == -1
+sellConditon = isNewTrend and dir == 1
 
 buySignal = buyCondition and can_trade_today
 sellSignal = sellConditon and can_trade_today
@@ -75,12 +75,6 @@ var float tradeStop = na
 var float tradeTarget1 = na
 var float tradeTarget2 = na
 var float tradeSize = na
-
-// tp_long = close + i_tpPoints
-// sl_long = close - i_slPoints
-
-// tp_short = close - i_tpPoints
-// sl_short = close + i_slPoints
 
 // Strategy execution
 if buySignal
@@ -140,4 +134,3 @@ plotshape(sellSignal, title="Sell Signal", text="SELL",
 plot(strategy.position_size != 0 ? tradeStop : na,   color=color.red,   style=plot.style_linebr, title="Stop Loss")
 plot(strategy.position_size != 0 ? tradeTarget1 : na, color=color.green, style=plot.style_linebr, title="Profit Target 1")
 plot(strategy.position_size != 0 ? tradeTarget2 : na, color=color.green, style=plot.style_linebr, title="Profit Target 2")
-
