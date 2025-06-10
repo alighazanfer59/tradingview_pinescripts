@@ -22,8 +22,8 @@ i_tp1_pts = input.int(20, "Take Profit Points", minval=1)
 i_tp2_pts = input.int(40, "Take Profit Points", minval=2)
 i_slPoints = input.int(20, "Stop Loss Points", minval=1)
 i_breakeven_pts = input.int(3, "Breakeven Points", minval=0)
-i_daily_profit_target = input.float(10000.0, "Daily Profit Target (USD)", minval=20.0)
-i_daily_loss_limit = input.float(100000.0, "Daily Loss Limit (USD)", minval=20.0)
+i_daily_profit_target = input.float(10000.0, "Daily Profit Target (USD)", minval=100.0, step = 100.0)
+i_daily_loss_limit = input.float(10000.0, "Daily Loss Limit (USD)", minval=100.0, step = 100.0)
 
 // === Daily PnL Tracking Based on End-of-Day Equity === //
 var float equity_at_yesterday_close = na
@@ -51,13 +51,21 @@ can_trade_today := (daily_pnl < i_daily_profit_target) and (daily_pnl > -i_daily
 // Plot Supertrend
 // plot(supertrend, "Supertrend", trendColor, 2, plot.style_linebr)
 
-[st, dir] = ta.supertrend(i_mult, i_atrLength)
-plot(dir < 0 ? st : na, "Up direction", color = color.green, style=plot.style_linebr)
-plot(dir > 0 ? st : na, "Down direction", color = color.red, style=plot.style_linebr)
+// Instead use the TASC calculation:
+
+float multi  = i_mult  // (reuse your i_mult input)
+int   length = i_atrLength  // (reuse your i_atrLength input)
+
+[st, dir] = ta.supertrend(multi, length)
+
+bool isNewTrend = ta.change(dir) != 0
+
+plot(dir < 0 ? st : na, "Up direction", color = color.green, style=plot.style_linebr, linewidth = 3)
+plot(dir > 0 ? st : na, "Down direction", color = color.red, style=plot.style_linebr, linewidth = 3)
 
 // Trading signals
-buyCondition = dir == -1 and dir[1] == 1 
-sellConditon = dir == 1 and dir[1] == -1
+buyCondition = isNewTrend and dir < 0 and dir[1] > 0
+sellConditon = isNewTrend and dir > 0 and dir[1] < 0
 
 buySignal = buyCondition and can_trade_today
 sellSignal = sellConditon and can_trade_today
@@ -76,7 +84,7 @@ var float tradeSize = na
 
 // Strategy execution
 if buySignal
-    strategy.close_all()
+    // strategy.close("Short")
     strategy.entry("Long", strategy.long, qty=i_contracts)
     tradeStop := na
     tradeTarget1 := na
@@ -84,7 +92,7 @@ if buySignal
     // strategy.exit("Long Exit", "Long", limit=tp_long, stop=sl_long)
 
 if sellSignal
-    strategy.close_all()
+    // strategy.close("Long")
     strategy.entry("Short", strategy.short, qty=i_contracts)
     tradeStop := na
     tradeTarget1 := na
@@ -110,6 +118,9 @@ strategy.exit(id="Long Exit #1",  from_entry="Long",  limit=tradeTarget1, stop=t
 strategy.exit(id="Long Exit #2",  from_entry="Long",  limit=tradeTarget2, stop=tradeStop, qty_percent=100)
 strategy.exit(id="Short Exit #1", from_entry="Short", limit=tradeTarget1, stop=tradeStop, qty_percent=i_contracts/2)
 strategy.exit(id="Short Exit #2", from_entry="Short", limit=tradeTarget2, stop=tradeStop, qty_percent=100)
+
+if not can_trade_today
+    strategy.close_all("Daily PNL limits exceeded")
 
 // Handle both long & short trade break-even stops (do this AFTER first position has exited above ^)
 if strategy.position_size != tradeSize
