@@ -11,8 +11,8 @@
 // Other exit conditions: Immediately close position if trend changes and the trade is still open.
 // Additional feature: Adjustable Daily/session profit target and loss targets.
 
-//@version=5
-strategy("Supertrend Trading Bot", overlay=true, default_qty_type=strategy.fixed, default_qty_value=2, initial_capital = 10000)
+//@version=6
+strategy("TASC Trading Bot", overlay=true, default_qty_type=strategy.fixed, default_qty_value=2)
 
 // Input parameters
 i_atrLength = input.int(10, "ATR Length", minval=1)
@@ -42,7 +42,7 @@ if is_new_day
 // Update daily_pnl continuously throughout the day
 daily_pnl := strategy.equity - equity_at_today_open
 
-plot(daily_pnl, 'Daily PNL', color.black)
+// plot(daily_pnl, 'Daily PNL', color.black)
 
 // Disable trading if outside limits
 can_trade_today := (daily_pnl < i_daily_profit_target) and (daily_pnl > -i_daily_loss_limit)
