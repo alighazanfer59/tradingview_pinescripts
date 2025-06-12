@@ -18,8 +18,8 @@ strategy("TASC Trading Bot", overlay=true, default_qty_type=strategy.fixed, defa
 i_atrLength = input.int(10, "ATR Length", minval=1)
 i_mult = input.float(3.0, "Multiplier", minval=0.1, step=0.1)
 i_contracts = input.int(2, "Contract Quantity", minval=2, step = 2)
-i_tp1_pts = input.int(20, "Take Profit Points", minval=1)
-i_tp2_pts = input.int(40, "Take Profit Points", minval=2)
+i_tp1_pts = input.int(20, "Take Profit (TP1) Points", minval=1)
+i_tp2_pts = input.int(40, "Take Profit (TP2) Points", minval=2)
 i_slPoints = input.int(20, "Stop Loss Points", minval=1)
 i_breakeven_pts = input.int(3, "Breakeven Points", minval=0)
 i_daily_profit_target = input.float(10000.0, "Daily Profit Target (USD)", minval=100.0, step = 100.0)
@@ -116,10 +116,17 @@ strategy.exit(id="Short Exit #2", from_entry="Short", limit=tradeTarget2, stop=t
 if not can_trade_today
     strategy.close_all("Daily PNL limits exceeded")
 
-// Handle both long & short trade break-even stops (do this AFTER first position has exited above ^)
+/// Handle breakeven after partial exit
 if strategy.position_size != tradeSize
-    tradeStop := strategy.position_avg_price + i_breakeven_pts
+    if strategy.position_size > 0  // Long position
+        tradeStop := strategy.position_avg_price + i_breakeven_pts
+    else if strategy.position_size < 0  // Short position
+        tradeStop := strategy.position_avg_price - i_breakeven_pts
     tradeTarget1 := na
+
+// Reset tradeSize when position is closed
+if strategy.position_size == 0
+    tradeSize := na
 
 // Plot entry markers
 plotshape(buySignal, title="Buy Signal", text="BUY", 
