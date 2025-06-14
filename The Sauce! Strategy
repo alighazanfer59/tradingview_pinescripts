@@ -1,228 +1,172 @@
 // This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
-// © Hiubris_Indicators
+// © pidepython / https://www.fiverr.com/alighazanfer59/build-algotrading-backtesting-screening-data-tools
+// System Rules:
+// Indicators: Tasc 2023.07 Keeping with The Larger Trend
+// Entry Signal: A buy signal is given when the indicator changes color from red to green, and vice versa for a sell order. A buy order is executed immediately after the first 1-minute candle leading to the colour change from red to green closes.
+// Order Size: 2 Contracts (Adjustable)
+// Take Profit 1 (TP1): 20 Points (Adjustable)
+// Take Profit 2 (TP2): 40 Points (Adjustable)
+// Stop loss (SL):  20 points
+// Breakeven (BE): Move SL to 3 Points (Adjustable) in profit after TP1 is hit
+// Other exit conditions: Immediately close position if trend changes and the trade is still open.
+// Additional feature: Adjustable Daily/session profit target and loss targets.
 
-//@version=5
-strategy(title = "The Sauce! Strategy", overlay = true, default_qty_value = 100, initial_capital=250000,default_qty_type=strategy.percent_of_equity, pyramiding=0, process_orders_on_close=true)
+//@version=6
+strategy("TASC Trading Bot", overlay=true, default_qty_type=strategy.fixed, default_qty_value=2)
 
+// Input parameters
+i_atrLength = input.int(10, "ATR Length", minval=1)
+i_mult = input.float(3.0, "Multiplier", minval=0.1, step=0.1)
+i_contracts = input.int(2, "Contract Quantity", minval=2, step = 2)
+i_tp1_pts = input.int(20, "Take Profit (TP1) Points", minval=1)
+i_tp2_pts = input.int(40, "Take Profit (TP2) Points", minval=2)
+i_slPoints = input.int(20, "Stop Loss Points", minval=1)
+i_breakeven_pts = input.int(3, "Breakeven Points", minval=0)
+i_daily_profit_target = input.float(10000.0, "Daily Profit Target (USD)", minval=100.0, step = 100.0)
+i_daily_loss_limit = input.float(10000.0, "Daily Loss Limit (USD)", minval=100.0, step = 100.0)
+// i_startTime = input.time(timestamp("09:30"), "Start Time")
+// i_endTime = input.time(timestamp("16:00"), "End Time")
+// ========== OPTIONAL FILTERS ========== //
+useDmiFilter = input.bool(true, "Use DMI Filter")
+useAdxFilter = input.bool(true, "Use ADX Filter")
+useRsiFilter = input.bool(true, "Use RSI Filter")
+adxThreshold = input.int(25, "ADX Threshold", minval=10, maxval=60)
+rsiThreshold = input.int(50, "ADX Threshold", minval=10, maxval=90)
 
-// Supertrend
-Periods = input(title='ATR Period', defval=20, group='The Goods')
-src = input(hl2, title='Source', group='The Goods')
-Multiplier = input.float(title='ATR Multiplier', step=0.1, defval=1.8, group='The Goods')
-changeATR = input(title='Change ATR Calculation Method ?', defval=true, group='The Goods')
-atr2 = ta.sma(ta.tr, Periods)
-atr = changeATR ? ta.atr(Periods) : atr2
-up = src - Multiplier * atr
-up1 = nz(up[1], up)
-up := close[1] > up1 ? math.max(up, up1) : up
-dn = src + Multiplier * atr
-dn1 = nz(dn[1], dn)
-dn := close[1] < dn1 ? math.min(dn, dn1) : dn
-trend = 1
-trend := nz(trend[1], trend)
-trend := trend == -1 and close > dn1 ? 1 : trend == 1 and close < up1 ? -1 : trend
+// Calculate DMI and ADX
+[dip, din, adx] = ta.dmi(14, 14)
+// Calculate RSI
+rsi = ta.rsi(close, 14)
 
-buySignal = trend == 1 and trend[1] == -1
-sellSignal = trend == -1 and trend[1] == 1
+// timeCond = i_startTime <= time and time <= i_endTime
 
-use_adx_barcolor = input(true, title='Show Bar Color', group='Trend Sauce')
-adxFunction()=>
-    len     = input.int(7, minval=1, title="DI Length", group='DI')
-    up      = ta.change(high)
-    down    = -ta.change(low)
-    plusDM  = na(up) ? na : (up > down and up > 0 ? up : 0)
-    minusDM = na(down) ? na : (down > up and down > 0 ? down : 0)
-    trur = ta.rma(ta.tr, len)
-    plus = fixnan(100 * ta.rma(plusDM, len) / trur)
-    minus = fixnan(100 * ta.rma(minusDM, len) / trur)
-    side = plus>minus? 1 : -1
-    side
-adx_side = adxFunction()
-barcolor(use_adx_barcolor and adx_side==1?color.rgb(33, 250, 4):use_adx_barcolor and adx_side==-1?color.rgb(255, 1, 1):na, title="Trend Sauce Bar Color")
+// === Daily PnL Tracking Based on End-of-Day Equity === //
+var float equity_at_yesterday_close = na
+var float equity_at_today_open = na
+var float daily_pnl = 0.0
+var bool can_trade_today = true
 
-// Trading Session
-tz0 = input.string('UTC-4', title="Timezone", inline='tz'   , group='General Settings')
-auto_tz = input(false, title="Use Exchange Timezone instead (Auto)", group='General Settings')
-tz = auto_tz? syminfo.timezone : tz0
+// Detect new day by change in dayofyear
+var int last_day = dayofmonth
+bool is_new_day = dayofmonth != last_day
+if is_new_day
+    equity_at_yesterday_close := nz(strategy.equity[1])
+    equity_at_today_open := strategy.equity
+    last_day := dayofmonth
 
-in_session(sess) => 
-    t = time(timeframe.period, sess, tz)
-    r = na(t) ? false : true
-    r
-    
-session = input.session("1000-1457", title="Trading Session")+":1234567"
+// Update daily_pnl continuously throughout the day
+daily_pnl := strategy.equity - equity_at_today_open
 
-trading_session_filter = in_session(session)
+// plot(daily_pnl, 'Daily PNL', color.black)
 
-// ————— Days of the Week Filter
-day_grp = "Trading Days of Week"
-use_mon = input(true, title="Monday  "    , inline="1", group=day_grp)
-use_tue = input(true, title="Tuesday  "   , inline="1", group=day_grp)
-use_wed = input(true, title="Wednesday  " , inline="1", group=day_grp)
-use_thu = input(true, title="Thursday"    , inline="1", group=day_grp)
-use_fri = input(true, title="Friday  "    , inline="2", group=day_grp)
-use_sat = input(true, title="Saturday  "  , inline="2", group=day_grp)
-use_sun = input(true, title="Sunday  "    , inline="2", group=day_grp)
+// Disable trading if outside limits
+can_trade_today := (daily_pnl < i_daily_profit_target) and (daily_pnl > -i_daily_loss_limit)
 
-monX = use_mon and dayofweek == dayofweek.monday    
-tueX = use_tue and dayofweek == dayofweek.tuesday   
-wedX = use_wed and dayofweek == dayofweek.wednesday      
-thuX = use_thu and dayofweek == dayofweek.thursday      
-friX = use_fri and dayofweek == dayofweek.friday    
-satX = use_sat and dayofweek == dayofweek.saturday      
-sunX = use_sun and dayofweek == dayofweek.sunday    
+// ======================================= INDICATOR CODE ============================================
+// Plot Supertrend
+// plot(supertrend, "Supertrend", trendColor, 2, plot.style_linebr)
 
-trading_days = monX or tueX or wedX or thuX or friX or satX or sunX
+// Instead use the TASC calculation:
 
+float multi  = i_mult  // (reuse your i_mult input)
+int   length = i_atrLength  // (reuse your i_atrLength input)
 
-long = buySignal  and adx_side== 1 and trading_days and trading_session_filter
-short= sellSignal and adx_side==-1 and trading_days and trading_session_filter
+[st, dir] = ta.supertrend(multi, length)
 
-// Position Management Tools
-pos = 0.0
-pos:= long? 1 : short? -1 : pos[1]
+bool isNewTrend = ta.change(dir) != 0
 
-longCond  = long  and (pos[1]!= 1 or na(pos[1]))
-shortCond = short and (pos[1]!=-1 or na(pos[1]))
+plot(dir < 0 ? st : na, "Up direction", color = color.green, style=plot.style_linebr, linewidth = 3)
+plot(dir > 0 ? st : na, "Down direction", color = color.red, style=plot.style_linebr, linewidth = 3)
 
-use_exit = input(true, title='Use Existing strategy Exit rule')
-long_exit = sellSignal and adx_side== 1 and pos[1]== 1 and not shortCond and use_exit
-short_exit= buySignal  and adx_side==-1 and pos[1]==-1 and not longCond  and use_exit
+// Trading signals
+buyCondition = isNewTrend and dir == -1
+sellConditon = isNewTrend and dir == 1
 
-if (long_exit  and not shortCond) or (short_exit and not longCond)
-    pos:=0
+// Apply DMI filter if enabled
+dmiFilterBuy = not useDmiFilter or (dip > din)
+dmiFilterSell = not useDmiFilter or (din > dip)
 
+// Apply ADX filter if enabled
+adxFilter = not useAdxFilter or (adx >= adxThreshold)
 
-// EXIT FUNCTIONS //
-qty = input(8, title='Entry QTY')
-i_sl  = input.float(75.0, title="Stop Loss (Ticks)", minval=0)
-i_tp1  = input.float(200.0, title="Take Profit 1 (Ticks)", minval=0)
-i_tp2  = input.float(225.0, title="Take Profit 2 (Ticks)", minval=0)
-i_tp3 = input.float(250.0, title="Take Profit 3 (Ticks)", minval=0)
-i_tp4  = input.float(275.0, title="Take Profit 4 (Ticks)", minval=0)
-i_be  = input.float(150.0, title="BreakEven (Ticks)", minval=0)
+// Apply RSI filter if enabled
+rsiFilter_long = not useRsiFilter or (rsi > rsiThreshold)
+rsiFilter_short = not useRsiFilter or (rsi < rsiThreshold)
 
-perc_tp1 = input(25.0, title='TP 1 Qty %')
-perc_tp2 = input(25.0, title='TP 2 Qty %')
-perc_tp3 = input(25.0, title='TP 3 Qty %')
-perc_tp4 = input(25.0, title='TP 4 Qty %')
+buySignal = buyCondition and can_trade_today and dmiFilterBuy and adxFilter and rsiFilter_long
+sellSignal = sellConditon and can_trade_today and dmiFilterSell and adxFilter and rsiFilter_short
 
-sl  = i_sl >0 ? i_sl *syminfo.mintick : 99999
-plot(syminfo.mintick, "mintick")
-tp1  = i_tp1 >0 ? i_tp1 *syminfo.mintick : 99999
-tp2  = i_tp2 >0 ? i_tp2 *syminfo.mintick : 99999
-tp3  = i_tp1 >0 ? i_tp3 *syminfo.mintick : 99999
-tp4  = i_tp2 >0 ? i_tp4 *syminfo.mintick : 99999
-be  = i_be >0 ? i_be *syminfo.mintick : 99999
+// Save stops & targets
+var float longStop = na
+var float shortStop = na
+var float longTarget1 = na
+var float shortTarget1 = na
+var float longTarget2 = na
+var float shortTarget2 = na
+var float tradeSize = na
 
-long_entry  = ta.valuewhen(longCond , close, 0)
-short_entry = ta.valuewhen(shortCond, close, 0)
+// Strategy execution
+if buySignal
+    strategy.entry("Long", strategy.long, qty=i_contracts)
+    longStop := na
+    longTarget1 := na
+    longTarget2 := na
 
+if sellSignal
+    strategy.entry("Short", strategy.short, qty=i_contracts)
+    shortStop := na
+    shortTarget1 := na
+    shortTarget2 := na
 
-// Simple Stop Loss + 4 Take Profits
-sl_long   = long_entry  - sl
-sl_short  = short_entry + sl
+// Handle long stops & target calculation
+if strategy.position_size > 0 and na(longStop)
+    longStop := strategy.position_avg_price - i_slPoints
+    longTarget1 := strategy.position_avg_price + i_tp1_pts
+    longTarget2 := strategy.position_avg_price + i_tp2_pts
+    tradeSize := strategy.position_size
+    strategy.exit(id="Long Exit #1",  from_entry="Long",  limit=longTarget1, stop=longStop, qty = i_contracts/2)
+    strategy.exit(id="Long Exit #2",  from_entry="Long",  limit=longTarget2, stop=longStop, qty_percent=100)
 
-tp1_long  = long_entry   + tp1
-tp1_short = short_entry  - tp1
+// Handle short stops & target calculation
+if strategy.position_size < 0 and na(shortStop)
+    shortStop := strategy.position_avg_price + i_slPoints
+    shortTarget1 := strategy.position_avg_price - i_tp1_pts
+    shortTarget2 := strategy.position_avg_price - i_tp2_pts
+    tradeSize := strategy.position_size
+    strategy.exit(id="Short Exit #1", from_entry="Short", limit=shortTarget1, stop=shortStop, qty = i_contracts/2)
+    strategy.exit(id="Short Exit #2", from_entry="Short", limit=shortTarget2, stop=shortStop, qty_percent=100)
 
-tp2_long  = long_entry   + tp2
-tp2_short = short_entry  - tp2
+if not can_trade_today
+    strategy.close_all("Daily PNL limits exceeded")
 
-tp3_long  = long_entry   + tp3
-tp3_short = short_entry  - tp3
+/// Handle breakeven after partial exit
+if strategy.position_size ==  i_contracts/2 // Long position
+    longStop := strategy.position_avg_price + i_breakeven_pts
+    strategy.exit(id="Long Exit #2",  from_entry="Long",  limit=longTarget2, stop=longStop, qty_percent=100)
+    longTarget1 := na
+else if strategy.position_size == -i_contracts/2  // Short position
+    shortStop := strategy.position_avg_price - i_breakeven_pts
+    strategy.exit(id="Short Exit #2", from_entry="Short", limit=shortTarget2, stop=shortStop, qty_percent=100)
+    shortTarget1 := na
 
-tp4_long  = long_entry   + tp4
-tp4_short = short_entry  - tp4
+// Reset tradeSize when position is closed
+if strategy.position_size == 0
+    tradeSize := na
 
+// Plot entry markers
+plotshape(buySignal, title="Buy Signal", text="BUY", 
+  style=shape.labelup, location=location.belowbar, 
+  color=color.new(color.green, 0), textcolor=color.white, size=size.small)
 
-// Inprofit
-be_long  = long_entry   + be
-be_short = short_entry  - be
-inprofit_long  = 0
-inprofit_short = 0
-inprofit_long  := pos==0 or longCond ? 0 : high>be_long [1]? 1 : inprofit_long[1]
-inprofit_short := pos==0 or shortCond? 0 : low <be_short[1]? 1 : inprofit_short[1]
+plotshape(sellSignal, title="Sell Signal", text="SELL", 
+  style=shape.labeldown, location=location.abovebar, 
+  color=color.new(color.red, 0), textcolor=color.white, size=size.small)
 
-sl_long  := inprofit_long ==1 ? long_entry  : sl_long 
-sl_short := inprofit_short==1 ? short_entry : sl_short
+// Draw stops & targets
+plot(strategy.position_size > 0 ? longStop : na,   color=color.red,   style=plot.style_linebr, title="Stop Loss")
+plot(strategy.position_size > 0 ? longTarget1 : na, color=color.green, style=plot.style_linebr, title="Profit Target 1")
+plot(strategy.position_size > 0 ? longTarget2 : na, color=color.green, style=plot.style_linebr, title="Profit Target 2")
 
-pre_long_tp1  = 0.0 , pre_long_tp2  = 0.0 , pre_long_tp3  = 0.0 , pre_long_tp4  = 0.0 
-pre_short_tp1 = 0.0 , pre_short_tp2 = 0.0 , pre_short_tp3 = 0.0 , pre_short_tp4 = 0.0 
-
-
-
-pre_long_tp1 := longCond? 1 : (high>tp1_long [1])? 0 : pre_long_tp1[1]
-pre_long_tp2 := longCond? 1 : (high>tp2_long [1])? 0 : pre_long_tp2[1]
-pre_long_tp3 := longCond? 1 : (high>tp3_long [1])? 0 : pre_long_tp3[1]
-pre_long_tp4 := longCond? 1 : (high>tp4_long [1])? 0 : pre_long_tp4[1]
-
-pre_short_tp1 := shortCond? 1 : (low<tp1_short[1])? 0 : pre_short_tp1[1]
-pre_short_tp2 := shortCond? 1 : (low<tp2_short[1])? 0 : pre_short_tp2[1]
-pre_short_tp3 := shortCond? 1 : (low<tp3_short[1])? 0 : pre_short_tp3[1]
-pre_short_tp4 := shortCond? 1 : (low<tp4_short[1])? 0 : pre_short_tp4[1]
-
-long_tp1 = high>tp1_long[1] and pre_long_tp1[1]==1 and pos[1]==1
-long_tp2 = high>tp2_long[1] and pre_long_tp2[1]==1 and pos[1]==1
-long_tp3 = high>tp3_long[1] and pre_long_tp3[1]==1 and pos[1]==1
-long_tp4 = high>tp4_long[1] and pre_long_tp4[1]==1 and pos[1]==1
-
-short_tp1 = low<tp1_short[1] and pre_short_tp1[1]==1 and pos[1]==-1
-short_tp2 = low<tp2_short[1] and pre_short_tp2[1]==1 and pos[1]==-1
-short_tp3 = low<tp3_short[1] and pre_short_tp3[1]==1 and pos[1]==-1
-short_tp4 = low<tp4_short[1] and pre_short_tp4[1]==1 and pos[1]==-1
-
-
-sum_tp4 = perc_tp1 + perc_tp2 + perc_tp3 + perc_tp4
-sum_tp3 = perc_tp1 + perc_tp2 + perc_tp3
-sum_tp2 = perc_tp1 + perc_tp2
-sum_tp1 = perc_tp1
-perc_tp1_strat = sum_tp1>=100? 100 : perc_tp1
-perc_tp2_strat = sum_tp2>=100? 100 : perc_tp2
-perc_tp3_strat = sum_tp3>=100? 100 : perc_tp3
-perc_tp4_strat = sum_tp4>=100? 100 : perc_tp4
-
-last_tp_long  = sum_tp4>=100? tp1_long  : sum_tp1>=100? tp1_long  : 99999
-last_tp_short = sum_tp4>=100? tp4_short : sum_tp1>=100? tp4_short : 0
-
-
-// Position Adjustment
-long_sl  = low <sl_long[1]  and pos[1]==1
-short_sl = high>sl_short[1] and pos[1]==-1
-
-final_long_tp  = high>last_tp_long[1]  and pos[1]==1
-final_short_tp = low <last_tp_short[1] and pos[1]==-1
-
-if ((long_sl or final_long_tp) and not shortCond) or ((short_sl or final_short_tp) and not longCond)
-    pos:=0
-    
-//  Strategy Backtest Limiting Algorithm
-i_startTime = input.time(defval = timestamp("01 Sep 2002 13:30 +0000"), title = "Backtesting Start Time")
-i_endTime   = input.time(defval = timestamp("30 Sep 2099 19:30 +0000"), title = "Backtesting End Time"  )
-timeCond   = (time > i_startTime) and (time < i_endTime)
-
-equity = strategy.initial_capital + strategy.netprofit
-
-if equity>0 and timeCond
-    if longCond
-        strategy.entry("long" , strategy.long , qty=qty)
-    if shortCond
-        strategy.entry("short", strategy.short, qty=qty)
-    
-    strategy.exit("SL/TP1", from_entry = "long" , stop=sl_long , limit=tp1_long , comment_profit ='TP1', comment_loss='SL', qty_percent=perc_tp1)
-    strategy.exit("SL/TP1", from_entry = "short", stop=sl_short, limit=tp1_short, comment_profit ='TP1', comment_loss='SL', qty_percent=perc_tp1)
-
-    strategy.exit("SL/TP2", from_entry = "long" , stop=sl_long , limit=tp2_long , comment_profit ='TP2', comment_loss='SL', qty_percent=perc_tp2)
-    strategy.exit("SL/TP2", from_entry = "short", stop=sl_short, limit=tp2_short, comment_profit ='TP2', comment_loss='SL', qty_percent=perc_tp2)
-
-    strategy.exit("SL/TP3", from_entry = "long" , stop=sl_long , limit=tp3_long , comment_profit ='TP3', comment_loss='SL', qty_percent=perc_tp3)
-    strategy.exit("SL/TP3", from_entry = "short", stop=sl_short, limit=tp3_short, comment_profit ='TP3', comment_loss='SL', qty_percent=perc_tp3)
-
-    strategy.exit("SL/TP4", from_entry = "long" , stop=sl_long , limit=tp4_long , comment_profit ='TP4', comment_loss='SL', qty_percent=perc_tp4)
-    strategy.exit("SL/TP4", from_entry = "short", stop=sl_short, limit=tp4_short, comment_profit ='TP4', comment_loss='SL', qty_percent=perc_tp4)
-
-
-if long_exit and timeCond
-    strategy.close("long" , comment="Exit")
-if short_exit and timeCond
-    strategy.close("short", comment="Exit")
+plot(strategy.position_size < 0 ? shortStop : na,   color=color.red,   style=plot.style_linebr, title="Stop Loss")
+plot(strategy.position_size < 0 ? shortTarget1 : na, color=color.green, style=plot.style_linebr, title="Profit Target 1")
+plot(strategy.position_size < 0 ? shortTarget2 : na, color=color.green, style=plot.style_linebr, title="Profit Target 2")
