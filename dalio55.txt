@@ -71,65 +71,57 @@ buySignal = buyCondition and can_trade_today
 sellSignal = sellConditon and can_trade_today
 
 // Save stops & targets
-var float tradeStop = na
-var float tradeTarget1 = na
-var float tradeTarget2 = na
+var float longStop = na
+var float shortStop = na
+var float longTarget1 = na
+var float shortTarget1 = na
+var float longTarget2 = na
+var float shortTarget2 = na
 var float tradeSize = na
 
 // Strategy execution
 if buySignal
     strategy.entry("Long", strategy.long, qty=i_contracts)
-    tradeStop := na
-    tradeTarget1 := na
-    tradeTarget2 := na
-    // strategy.exit("Long Exit", "Long", limit=close + i_tp1_pts, stop=close - i_slPoints, qty = i_contracts/2)
-    // strategy.exit("Long Exit", "Long", limit=close + i_tp2_pts, stop=close - i_slPoints)
+    longStop := na
+    longTarget1 := na
+    longTarget2 := na
 
 if sellSignal
     strategy.entry("Short", strategy.short, qty=i_contracts)
-    tradeStop := na
-    tradeTarget1 := na
-    tradeTarget2 := na
-
-    // strategy.exit("Short Exit", "Short", limit=tp_short, stop=sl_short)
+    shortStop := na
+    shortTarget1 := na
+    shortTarget2 := na
 
 // Handle long stops & target calculation
-if strategy.position_size > 0 and na(tradeStop)
-    tradeStop := strategy.position_avg_price - i_slPoints
-    tradeTarget1 := strategy.position_avg_price + i_tp1_pts
-    tradeTarget2 := strategy.position_avg_price + i_tp2_pts
+if strategy.position_size > 0 and na(longStop)
+    longStop := strategy.position_avg_price - i_slPoints
+    longTarget1 := strategy.position_avg_price + i_tp1_pts
+    longTarget2 := strategy.position_avg_price + i_tp2_pts
     tradeSize := strategy.position_size
-    strategy.exit(id="Long Exit #1",  from_entry="Long",  limit=tradeTarget1, stop=tradeStop, qty = i_contracts/2)
-    strategy.exit(id="Long Exit #2",  from_entry="Long",  limit=tradeTarget2, stop=tradeStop, qty_percent=100)
+    strategy.exit(id="Long Exit #1",  from_entry="Long",  limit=longTarget1, stop=longStop, qty = i_contracts/2)
+    strategy.exit(id="Long Exit #2",  from_entry="Long",  limit=longTarget2, stop=longStop, qty_percent=100)
 
 // Handle short stops & target calculation
-if strategy.position_size < 0 and na(tradeStop)
-    tradeStop := strategy.position_avg_price + i_slPoints
-    tradeTarget1 := strategy.position_avg_price - i_tp1_pts
-    tradeTarget2 := strategy.position_avg_price - i_tp2_pts
+if strategy.position_size < 0 and na(shortStop)
+    shortStop := strategy.position_avg_price + i_slPoints
+    shortTarget1 := strategy.position_avg_price - i_tp1_pts
+    shortTarget2 := strategy.position_avg_price - i_tp2_pts
     tradeSize := strategy.position_size
-    strategy.exit(id="Short Exit #1", from_entry="Short", limit=tradeTarget1, stop=tradeStop, qty = i_contracts/2)
-    strategy.exit(id="Short Exit #2", from_entry="Short", limit=tradeTarget2, stop=tradeStop, qty_percent=100)
-
-// Handle trade exits
-// strategy.exit(id="Long Exit #1",  from_entry="Long",  limit=tradeTarget1, stop=tradeStop, qty_percent=i_contracts/2)
-// strategy.exit(id="Long Exit #2",  from_entry="Long",  limit=tradeTarget2, stop=tradeStop, qty_percent=100)
-// strategy.exit(id="Short Exit #1", from_entry="Short", limit=tradeTarget1, stop=tradeStop, qty_percent=i_contracts/2)
-// strategy.exit(id="Short Exit #2", from_entry="Short", limit=tradeTarget2, stop=tradeStop, qty_percent=100)
+    strategy.exit(id="Short Exit #1", from_entry="Short", limit=shortTarget1, stop=shortStop, qty = i_contracts/2)
+    strategy.exit(id="Short Exit #2", from_entry="Short", limit=shortTarget2, stop=shortStop, qty_percent=100)
 
 if not can_trade_today
     strategy.close_all("Daily PNL limits exceeded")
 
 /// Handle breakeven after partial exit
-// if strategy.position_size != tradeSize
 if strategy.position_size ==  i_contracts/2 // Long position
-    tradeStop := strategy.position_avg_price + i_breakeven_pts
-    strategy.exit(id="Long Exit #2",  from_entry="Long",  limit=tradeTarget2, stop=tradeStop, qty_percent=100)
-    tradeTarget1 := na
+    longStop := strategy.position_avg_price + i_breakeven_pts
+    strategy.exit(id="Long Exit #2",  from_entry="Long",  limit=longTarget2, stop=longStop, qty_percent=100)
+    longTarget1 := na
 else if strategy.position_size == -i_contracts/2  // Short position
-    tradeStop := strategy.position_avg_price - i_breakeven_pts
-    strategy.exit(id="Short Exit #2", from_entry="Short", limit=tradeTarget2, stop=tradeStop, qty_percent=100)
-    tradeTarget1 := na
+    shortStop := strategy.position_avg_price - i_breakeven_pts
+    strategy.exit(id="Short Exit #2", from_entry="Short", limit=shortTarget2, stop=shortStop, qty_percent=100)
+    shortTarget1 := na
 
 // Reset tradeSize when position is closed
 if strategy.position_size == 0
@@ -145,6 +137,10 @@ plotshape(sellSignal, title="Sell Signal", text="SELL",
   color=color.new(color.red, 0), textcolor=color.white, size=size.small)
 
 // Draw stops & targets
-plot(strategy.position_size != 0 ? tradeStop : na,   color=color.red,   style=plot.style_linebr, title="Stop Loss")
-plot(strategy.position_size != 0 ? tradeTarget1 : na, color=color.green, style=plot.style_linebr, title="Profit Target 1")
-plot(strategy.position_size != 0 ? tradeTarget2 : na, color=color.green, style=plot.style_linebr, title="Profit Target 2")
+plot(strategy.position_size > 0 ? longStop : na,   color=color.red,   style=plot.style_linebr, title="Stop Loss")
+plot(strategy.position_size > 0 ? longTarget1 : na, color=color.green, style=plot.style_linebr, title="Profit Target 1")
+plot(strategy.position_size > 0 ? longTarget2 : na, color=color.green, style=plot.style_linebr, title="Profit Target 2")
+
+plot(strategy.position_size < 0 ? shortStop : na,   color=color.red,   style=plot.style_linebr, title="Stop Loss")
+plot(strategy.position_size < 0 ? shortTarget1 : na, color=color.green, style=plot.style_linebr, title="Profit Target 1")
+plot(strategy.position_size < 0 ? shortTarget2 : na, color=color.green, style=plot.style_linebr, title="Profit Target 2")
