@@ -24,19 +24,45 @@ i_slPoints = input.int(20, "Stop Loss Points", minval=1)
 i_breakeven_pts = input.int(3, "Breakeven Points", minval=0)
 i_daily_profit_target = input.float(10000.0, "Daily Profit Target (USD)", minval=100.0, step = 100.0)
 i_daily_loss_limit = input.float(10000.0, "Daily Loss Limit (USD)", minval=100.0, step = 100.0)
+i_emaPeriod1 = input.int(13, "EMA Period 1", minval=1)
+i_emaPeriod2 = input.int(48, "EMA Period 2", minval=1)
+i_emaPeriod3 = input.int(200, "EMA Period 3", minval=1)
+in_time_sess_en = input.bool(false, "Limit trading hours?")
+in_time_sess = input.session("0930-1600", "Session hours")
+t = time(timeframe.period, in_time_sess)
+bgcolor((time == t and  in_time_sess_en) ? color.rgb(167, 175, 167) : na)
+
 // i_startTime = input.time(timestamp("09:30"), "Start Time")
 // i_endTime = input.time(timestamp("16:00"), "End Time")
 // ========== OPTIONAL FILTERS ========== //
 useDmiFilter = input.bool(false, "Use DMI Filter")
 useAdxFilter = input.bool(false, "Use ADX Filter")
 useRsiFilter = input.bool(false, "Use RSI Filter")
-adxThreshold = input.int(25, "ADX Threshold", minval=10, maxval=60)
-rsiThreshold = input.int(50, "ADX Threshold", minval=10, maxval=90)
+useEmaFilter = input.bool(false, "Use EMA proximity filters")
+i_adxThreshold = input.int(25, "ADX Threshold", minval=10, maxval=60)
+i_rsiThreshold = input.int(50, "ADX Threshold", minval=10, maxval=90)
+// i_emaThreshold = input.int(20, "EMA Threshold", minval = 1)
+
 
 // Calculate DMI and ADX
 [dip, din, adx] = ta.dmi(14, 14)
 // Calculate RSI
 rsi = ta.rsi(close, 14)
+
+// ========== EMA PROXIMITY FILTER ========== //
+// // Calculate EMA proximity conditions
+// emaBullishFilter = false
+// emaBearishFilter = false
+
+// if useEmaFilter
+//     ema1 = ta.ema(close, i_emaPeriod1)
+//     ema2 = ta.ema(close, i_emaPeriod2)
+//     ema3 = ta.ema(close, i_emaPeriod3)
+//     // For bullish trades: avoid if any EMA is less than threshold above entry
+//     emaBullishFilter := (ema1 - close < i_emaThreshold) or (ema2 - close < i_emaThreshold) or (ema3 - close < i_emaThreshold)
+    
+//     // For bearish trades: avoid if any EMA is less than threshold below entry
+//     emaBearishFilter := (close - ema1 < i_emaThreshold) or (close - ema2 < i_emaThreshold) or (close - ema3 < i_emaThreshold)
 
 // timeCond = i_startTime <= time and time <= i_endTime
 
@@ -87,14 +113,21 @@ dmiFilterBuy = not useDmiFilter or (dip > din)
 dmiFilterSell = not useDmiFilter or (din > dip)
 
 // Apply ADX filter if enabled
-adxFilter = not useAdxFilter or (adx >= adxThreshold)
+adxFilter = not useAdxFilter or (adx >= i_adxThreshold)
 
 // Apply RSI filter if enabled
-rsiFilter_long = not useRsiFilter or (rsi > rsiThreshold)
-rsiFilter_short = not useRsiFilter or (rsi < rsiThreshold)
+rsiFilter_long = not useRsiFilter or (rsi > i_rsiThreshold)
+rsiFilter_short = not useRsiFilter or (rsi < i_rsiThreshold)
 
-buySignal = buyCondition and can_trade_today and dmiFilterBuy and adxFilter and rsiFilter_long
-sellSignal = sellConditon and can_trade_today and dmiFilterSell and adxFilter and rsiFilter_short
+// Apply EMA filter if enabled
+// emaFilterBuy = not useEmaFilter or not emaBullishFilter
+// emaFilterSell = not useEmaFilter or not emaBearishFilter
+
+// time_range_good = in_time_range_en ? (time >= in_time_range_start and time <= in_time_range_end) : true
+time_sess_good = in_time_sess_en ? time == t : true
+
+buySignal = buyCondition and can_trade_today and dmiFilterBuy and adxFilter and rsiFilter_long and time_sess_good
+sellSignal = sellConditon and can_trade_today and dmiFilterSell and adxFilter and rsiFilter_short and time_sess_good
 
 // Save stops & targets
 var float longStop = na
