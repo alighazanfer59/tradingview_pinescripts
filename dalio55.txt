@@ -24,6 +24,21 @@ i_slPoints = input.int(20, "Stop Loss Points", minval=1)
 i_breakeven_pts = input.int(3, "Breakeven Points", minval=0)
 i_daily_profit_target = input.float(10000.0, "Daily Profit Target (USD)", minval=100.0, step = 100.0)
 i_daily_loss_limit = input.float(10000.0, "Daily Loss Limit (USD)", minval=100.0, step = 100.0)
+// i_startTime = input.time(timestamp("09:30"), "Start Time")
+// i_endTime = input.time(timestamp("16:00"), "End Time")
+// ========== OPTIONAL FILTERS ========== //
+useDmiFilter = input.bool(false, "Use DMI Filter")
+useAdxFilter = input.bool(false, "Use ADX Filter")
+useRsiFilter = input.bool(false, "Use RSI Filter")
+adxThreshold = input.int(25, "ADX Threshold", minval=10, maxval=60)
+rsiThreshold = input.int(50, "ADX Threshold", minval=10, maxval=90)
+
+// Calculate DMI and ADX
+[dip, din, adx] = ta.dmi(14, 14)
+// Calculate RSI
+rsi = ta.rsi(close, 14)
+
+// timeCond = i_startTime <= time and time <= i_endTime
 
 // === Daily PnL Tracking Based on End-of-Day Equity === //
 var float equity_at_yesterday_close = na
@@ -67,8 +82,19 @@ plot(dir > 0 ? st : na, "Down direction", color = color.red, style=plot.style_li
 buyCondition = isNewTrend and dir == -1
 sellConditon = isNewTrend and dir == 1
 
-buySignal = buyCondition and can_trade_today
-sellSignal = sellConditon and can_trade_today
+// Apply DMI filter if enabled
+dmiFilterBuy = not useDmiFilter or (dip > din)
+dmiFilterSell = not useDmiFilter or (din > dip)
+
+// Apply ADX filter if enabled
+adxFilter = not useAdxFilter or (adx >= adxThreshold)
+
+// Apply RSI filter if enabled
+rsiFilter_long = not useRsiFilter or (rsi > rsiThreshold)
+rsiFilter_short = not useRsiFilter or (rsi < rsiThreshold)
+
+buySignal = buyCondition and can_trade_today and dmiFilterBuy and adxFilter and rsiFilter_long
+sellSignal = sellConditon and can_trade_today and dmiFilterSell and adxFilter and rsiFilter_short
 
 // Save stops & targets
 var float longStop = na
