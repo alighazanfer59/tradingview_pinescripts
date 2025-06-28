@@ -1,0 +1,182 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © pidepython / https://www.fiverr.com/alighazanfer59/build-algotrading-backtesting-screening-data-tools
+
+//@version=6
+strategy("DMI Trintiy Strategy", overlay=true, default_qty_type=strategy.fixed, default_qty_value=2)
+
+// Input parameters
+i_atrLength = input.int(10, "ATR Length", minval=1, group = "TASC Indicator Settings", tooltip = "TASC supertrend Calculation, a lower value will make the system more sensitive to trend reversal")
+i_mult = input.float(3.0, "Multiplier", minval=0.1, step=0.1, group = "TASC Indicator Settings", tooltip = "TASC supertrend Calculation, a lower value will make the system more sensitive to trend reversal")
+i_contracts = input.int(2, "Contract Quantity", minval=2, step = 2, group = "Trade Management")
+i_tp1_pts = input.int(20, "Take Profit (TP1) Points", minval=1, group = "Trade Management")
+i_tp2_pts = input.int(40, "Take Profit (TP2) Points", minval=2, group = "Trade Management")
+i_slPoints = input.int(20, "Stop Loss Points", minval=1, group = "Trade Management")
+i_breakeven_pts = input.int(3, "Breakeven Points", minval=0, group = "Trade Management")
+i_market_mv_to_BE = input.bool(false, "Enable Move to Breakeven Points", group = "Trade Management", tooltip = "Enable/Disable addtional setup to move SL to breakeven")
+i_pts_to_BE = input.int(10, "Market Move to trigger Breakeven Points", group = "Trade Management", tooltip = "If market moves to a certain points in the direction of trade, then the SL moves to Breakeven")
+
+i_daily_profit_target = input.float(10000.0, "Daily Profit Target (USD)", minval=100.0, step = 100.0, group = "Trade Management")
+i_daily_loss_limit = input.float(10000.0, "Daily Loss Limit (USD)", minval=100.0, step = 100.0, group = "Trade Management")
+
+// ========== OPTIONAL FILTERS ========== //
+useDmiFilter = input.bool(false, "Use DMI Filter", group = "Filters Settings")
+useAdxFilter = input.bool(false, "Use ADX Filter", group = "Filters Settings")
+useRsiFilter = input.bool(false, "Use RSI Filter", group = "Filters Settings")
+// useEmaFilter = input.bool(false, "Use EMA proximity filters")
+i_diLenglth = input.int(9, "diLength", minval = 2, group = "Filters Settings")
+i_adxSmoothing = input.int(9, "adxSmoothing", minval = 2, group = "Filters Settings")
+i_adxThreshold = input.int(25, "ADX Threshold", minval=10, maxval=60, group = "Filters Settings")
+i_rsiLength = input.int(14, "RSI Length", minval = 2, group = "Filters Settings")
+i_rsiThreshold = input.int(50, "RSI Threshold", minval=10, maxval=90, group = "Filters Settings")
+// i_emaThreshold = input.int(20, "EMA Threshold", minval = 1)
+
+in_time_sess_en = input.bool(true, "Limit trading hours?", group = "Time Settings")
+in_time_sess = input.session("0930-1600", "Session hours", group = "Time Settings")
+t = time(timeframe.period, in_time_sess)
+bgcolor((time == t and  in_time_sess_en) ? color.rgb(167, 175, 167) : na)
+
+
+// Calculate DMI and ADX
+[dip, din, adx] = ta.dmi(i_diLenglth, i_adxSmoothing)
+// Calculate RSI
+rsi = ta.rsi(close, i_rsiLength)
+
+// === Daily PnL Tracking Based on End-of-Day Equity === //
+var float equity_at_yesterday_close = na
+var float equity_at_today_open = na
+var float daily_pnl = 0.0
+var bool can_trade_today = true
+
+// Detect new day by change in dayofyear
+var int last_day = dayofmonth
+bool is_new_day = dayofmonth != last_day
+if is_new_day
+    equity_at_yesterday_close := nz(strategy.equity[1])
+    equity_at_today_open := strategy.equity
+    last_day := dayofmonth
+
+// Update daily_pnl continuously throughout the day
+daily_pnl := strategy.equity - equity_at_today_open
+
+// Disable trading if outside limits
+can_trade_today := (daily_pnl < i_daily_profit_target) and (daily_pnl > -i_daily_loss_limit)
+
+// ======================================= INDICATOR CODE ============================================
+
+// TASC calculation:
+
+float multi  = i_mult  // (reuse the i_mult input)
+int   length = i_atrLength  // (reuse the i_atrLength input)
+
+[st, dir] = ta.supertrend(multi, length)
+
+bool isNewTrend = ta.change(dir) != 0
+
+plot(dir < 0 ? st : na, "Up direction", color = color.green, style=plot.style_linebr, linewidth = 3)
+plot(dir > 0 ? st : na, "Down direction", color = color.red, style=plot.style_linebr, linewidth = 3)
+
+// Trading signals
+buyCondition = isNewTrend and dir == -1
+sellConditon = isNewTrend and dir == 1
+
+// Apply DMI filter if enabled
+dmiFilterBuy = not useDmiFilter or (dip > din)
+dmiFilterSell = not useDmiFilter or (din > dip)
+
+// Apply ADX filter if enabled
+adxFilter = not useAdxFilter or (adx >= i_adxThreshold)
+
+// Apply RSI filter if enabled
+rsiFilter_long = not useRsiFilter or (rsi > i_rsiThreshold)
+rsiFilter_short = not useRsiFilter or (rsi < i_rsiThreshold)
+
+// Time Filter
+time_sess_good = in_time_sess_en ? time == t : true
+
+buySignal = buyCondition and can_trade_today and dmiFilterBuy and adxFilter and rsiFilter_long and time_sess_good
+sellSignal = sellConditon and can_trade_today and dmiFilterSell and adxFilter and rsiFilter_short and time_sess_good
+
+// Save stops & targets
+var float longStop = na
+var float shortStop = na
+var float longTarget1 = na
+var float shortTarget1 = na
+var float longTarget2 = na
+var float shortTarget2 = na
+var float tradeSize = na
+
+// Strategy execution
+if buySignal
+    strategy.entry("Long", strategy.long, qty=i_contracts)
+    longStop := na
+    longTarget1 := na
+    longTarget2 := na
+
+if sellSignal
+    strategy.entry("Short", strategy.short, qty=i_contracts)
+    shortStop := na
+    shortTarget1 := na
+    shortTarget2 := na
+
+// Handle long stops & target calculation
+if strategy.position_size > 0 and na(longStop)
+    longStop := strategy.position_avg_price - i_slPoints
+    longTarget1 := strategy.position_avg_price + i_tp1_pts
+    longTarget2 := strategy.position_avg_price + i_tp2_pts
+    tradeSize := strategy.position_size
+    strategy.exit(id="Long Exit #1",  from_entry="Long",  limit=longTarget1, stop=longStop, qty = i_contracts/2)
+    strategy.exit(id="Long Exit #2",  from_entry="Long",  limit=longTarget2, stop=longStop, qty_percent=100)
+
+// Handle short stops & target calculation
+if strategy.position_size < 0 and na(shortStop)
+    shortStop := strategy.position_avg_price + i_slPoints
+    shortTarget1 := strategy.position_avg_price - i_tp1_pts
+    shortTarget2 := strategy.position_avg_price - i_tp2_pts
+    tradeSize := strategy.position_size
+    strategy.exit(id="Short Exit #1", from_entry="Short", limit=shortTarget1, stop=shortStop, qty = i_contracts/2)
+    strategy.exit(id="Short Exit #2", from_entry="Short", limit=shortTarget2, stop=shortStop, qty_percent=100)
+
+if not can_trade_today
+    strategy.close_all("Daily PNL limits exceeded")
+
+/// Handle breakeven after partial exit
+if strategy.position_size ==  i_contracts/2 // Long position
+    longStop := strategy.position_avg_price + i_breakeven_pts
+    strategy.exit(id="Long Exit #2",  from_entry="Long",  limit=longTarget2, stop=longStop, qty_percent=100)
+    longTarget1 := na
+else if strategy.position_size == -i_contracts/2 // Short position
+    shortStop := strategy.position_avg_price - i_breakeven_pts
+    strategy.exit(id="Short Exit #2", from_entry="Short", limit=shortTarget2, stop=shortStop, qty_percent=100)
+    shortTarget1 := na
+
+// Handle Breakeven after market move to a certain points
+if i_market_mv_to_BE
+    if high >= strategy.position_avg_price + i_pts_to_BE
+        longStop := strategy.position_avg_price + i_breakeven_pts
+        strategy.exit(id="Long Exit #1",  from_entry="Long",  limit=longTarget1, stop=longStop, qty = i_contracts/2)
+        strategy.exit(id="Long Exit #2",  from_entry="Long",  limit=longTarget2, stop=longStop, qty_percent=100)
+    else if low <= strategy.position_avg_price - i_pts_to_BE
+        strategy.exit(id="Short Exit #1", from_entry="Short", limit=shortTarget1, stop=shortStop, qty = i_contracts/2)
+        strategy.exit(id="Short Exit #2", from_entry="Short", limit=shortTarget2, stop=shortStop, qty_percent=100)
+
+// Reset tradeSize when position is closed
+if strategy.position_size == 0
+    tradeSize := na
+
+// Plot entry markers
+plotshape(buySignal, title="Buy Signal", text="BUY", 
+  style=shape.labelup, location=location.belowbar, 
+  color=color.new(color.green, 0), textcolor=color.white, size=size.small)
+
+plotshape(sellSignal, title="Sell Signal", text="SELL", 
+  style=shape.labeldown, location=location.abovebar, 
+  color=color.new(color.red, 0), textcolor=color.white, size=size.small)
+
+// Draw stops & targets
+plot(strategy.position_size > 0 ? longStop : na,   color=color.red,   style=plot.style_linebr, title="Stop Loss")
+plot(strategy.position_size > 0 ? longTarget1 : na, color=color.green, style=plot.style_linebr, title="Profit Target 1")
+plot(strategy.position_size > 0 ? longTarget2 : na, color=color.green, style=plot.style_linebr, title="Profit Target 2")
+
+plot(strategy.position_size < 0 ? shortStop : na,   color=color.red,   style=plot.style_linebr, title="Stop Loss")
+plot(strategy.position_size < 0 ? shortTarget1 : na, color=color.green, style=plot.style_linebr, title="Profit Target 1")
+plot(strategy.position_size < 0 ? shortTarget2 : na, color=color.green, style=plot.style_linebr, title="Profit Target 2")
