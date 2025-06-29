@@ -82,9 +82,6 @@ i_daily_loss_limit = input.float(10000.0, "Daily Loss Limit (USD)", minval=100.0
 //   text_color=color.white, text_size=size.normal)
 
 //========== PLACEHOLDER FOR PHASE 2 LOGIC ==========//
-// Will add in Phase 2
-dmiCondition = false
-adxCondition = false
 
 // === Daily PnL Tracking Based on End-of-Day Equity === //
 var float equity_at_yesterday_close = na
@@ -121,8 +118,8 @@ plot(dir < 0 ? st : na, "Up direction", color = color.green, style=plot.style_li
 plot(dir > 0 ? st : na, "Down direction", color = color.red, style=plot.style_linebr, linewidth = 3)
 
 // Trading signals
-buyCondition = isNewTrend and dir == -1
-sellConditon = isNewTrend and dir == 1
+TASCbuyCondition = isNewTrend and dir == -1
+TASCsellConditon = isNewTrend and dir == 1
 
 // ===== PHASE 2: MTF DMI/ADX LOGIC ===== //
 // Initialize condition arrays
@@ -142,81 +139,52 @@ array.clear(bearishConditions)
 array.clear(adxConditions)
 
 // Calculate MTF conditions
-if array.size(selectedTFs) > 0
-    for i = 0 to array.size(selectedTFs) - 1
-        string tf = array.get(selectedTFs, i)
+// if array.size(selectedTFs) > 0
+//     for i = 0 to array.size(selectedTFs) - 1
+//         string tf = array.get(selectedTFs, i)
         
-        // Get DMI/ADX values using wrapper function
-        [dipHTF, dinHTF, adxHTF] = request.security(syminfo.tickerid, tf, 
-             dmiWrapper(i_dmiLength, i_dmiSmoothing),
-             lookahead=barmerge.lookahead_off)
+// Get DMI/ADX values using wrapper function
+
+[dip5m, din5m, adx5m] = request.security(syminfo.tickerid, '5', dmiWrapper(i_dmiLength, i_dmiSmoothing), lookahead=barmerge.lookahead_off)
         
-        // Check conditions per timeframe
-        bool bullishCond = dipHTF > dinHTF and dipHTF >= 25
-        bool bearishCond = dinHTF > dipHTF and dinHTF >= 25
-        bool adxCond = adxHTF >= 25
+// Check conditions per timeframe
+dmibuyCond5m = dip5m > din5m and dip5m >= 25
+dmisellCond5m = din5m > dip5m and din5m >= 25
+// bool adxCond = adxHTF >= 25
+
+[dip15m, din15m, adx15m] = request.security(syminfo.tickerid, '15', dmiWrapper(i_dmiLength, i_dmiSmoothing), lookahead=barmerge.lookahead_off)
         
-        // Store conditions
-        array.push(bullishConditions, bullishCond)
-        array.push(bearishConditions, bearishCond)
-        array.push(adxConditions, adxCond)
+// Check conditions per timeframe
+dmibuyCond15m = dip15m > din15m and dip15m >= 25
+dmisellCond15m = din15m > dip15m and din15m >= 25
+        
+[dip, din, adx] = dmiWrapper(i_dmiLength, i_dmiSmoothing)
+dmibuyCond = dip > din and dip >= 25 and dmibuyCond5m and dmibuyCond15m and conditionType == 'DMI'
+dmisellCond = din > dip and din >= 25 and dmisellCond5m and dmisellCond15m and conditionType == 'DMI'
+// Store conditions
+// array.push(bullishConditions, bullishCond)
+// array.push(bearishConditions, bearishCond)
+// array.push(adxConditions, adxCond)
 
 // Function to check if all elements in array are true
-allTrue(array) =>
-    bool result = true
-    if array.size(array) > 0
-        for i = 0 to array.size(array) - 1
-            if not array.get(array, i)
-                result := false
-                break
-    result
+// allTrue(array) =>
+//     bool result = true
+//     if array.size(array) > 0
+//         for i = 0 to array.size(array) - 1
+//             if not array.get(array, i)
+//                 result := false
+//                 break
+//     result
 
 // Check if ALL selected TFs meet conditions
-allBullish = allTrue(bullishConditions)
-allBearish = allTrue(bearishConditions)
-allAdx = allTrue(adxConditions)
+// allBullish = allTrue(bullishConditions)
+// allBearish = allTrue(bearishConditions)
+// allAdx = allTrue(adxConditions)
 
-// ===== MODIFY ENTRY SIGNALS ===== //
+// ===== ENTRY SIGNALS ===== //
 // Existing signal definitions
-buySignal = buyCondition and can_trade_today and time_sess_good
-sellSignal = sellConditon and can_trade_today and time_sess_good
-
-// Add MTF filters to signals
-finalBuySignal = buySignal and (conditionType == "DMI" ? allBullish : allAdx)
-
-finalSellSignal = sellSignal and (conditionType == "DMI" ? allBearish : allAdx)
-
-// ===== DIRECTION DETECTION ===== //
-bullishFlag = conditionType == "DMI" ? allBullish : allAdx
-bearishFlag = conditionType == "DMI" ? allBearish : allAdx
-
-// ... rest of your existing code below ...
-
-// ===== UPDATE STRATEGY ENTRIES ===== //
-// Modify your existing strategy.entry calls to use final signals:
-if finalBuySignal
-    strategy.entry("Long", strategy.long, qty=i_contracts)
-    // ... rest of your long entry logic ...
-
-if finalSellSignal
-    strategy.entry("Short", strategy.short, qty=i_contracts)
-    // ... rest of your short entry logic ...
-
-// ===== PLOT MTF CONFIRMATIONS ===== //
-plotshape(bullishFlag, title="MTF Bullish Confirmation", text="MTF▲", 
-  style=shape.labelup, location=location.top, 
-  color=color.new(color.teal, 0), textcolor=color.white, size=size.small)
-
-plotshape(bearishFlag, title="MTF Bearish Confirmation", text="MTF▼", 
-  style=shape.labeldown, location=location.top, 
-  color=color.new(color.orange, 0), textcolor=color.white, size=size.small)
-
-// // Apply DMI filter if enabled
-// dmiFilterBuy = not useDmiFilter or (dip > din)
-// dmiFilterSell = not useDmiFilter or (din > dip)
-
-// // Apply ADX filter if enabled
-// adxFilter = not useAdxFilter or (adx >= i_adxThreshold)
+buySignal = TASCbuyCondition and dmibuyCond and can_trade_today and time_sess_good
+sellSignal = TASCsellConditon and dmisellCond and can_trade_today and time_sess_good
 
 
 // Save stops & targets
