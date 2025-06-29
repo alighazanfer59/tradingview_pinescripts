@@ -271,3 +271,69 @@ plot(strategy.position_size > 0 ? longTarget2 : na, color=color.green, style=plo
 plot(strategy.position_size < 0 ? shortStop : na,   color=color.red,   style=plot.style_linebr, title="Stop Loss")
 plot(strategy.position_size < 0 ? shortTarget1 : na, color=color.green, style=plot.style_linebr, title="Profit Target 1")
 plot(strategy.position_size < 0 ? shortTarget2 : na, color=color.green, style=plot.style_linebr, title="Profit Target 2")
+
+
+// ===== CREATE DMI/ADX DISPLAY TABLE ===== //
+var table dmiTable = table.new(position.top_right, 5, 4, border_width=1, bgcolor=color.rgb(33, 40, 48))
+
+// Table headers
+if barstate.isfirst
+    table.cell(dmiTable, 0, 0, "TF", bgcolor=color.gray, text_color=color.white)
+    table.cell(dmiTable, 1, 0, "+DI", bgcolor=color.gray, text_color=color.white)
+    table.cell(dmiTable, 2, 0, "-DI", bgcolor=color.gray, text_color=color.white)
+    table.cell(dmiTable, 3, 0, "ADX", bgcolor=color.gray, text_color=color.white)
+    table.cell(dmiTable, 4, 0, "Signal", bgcolor=color.gray, text_color=color.white)
+
+// Update DMI values for 1m timeframe
+table.cell(dmiTable, 0, 1, "1m", text_color=color.white)
+
+// Color coding for +DI/-DI
+plusDIcolor = dip >= din ? color.lime : color.silver
+minusDIcolor = din > dip ? color.red : color.silver
+adxColor = adx >= 25 ? color.orange : color.silver
+
+table.cell(dmiTable, 1, 1, str.tostring(dip, "#.##"), text_color=plusDIcolor)
+table.cell(dmiTable, 2, 1, str.tostring(din, "#.##"), text_color=minusDIcolor)
+table.cell(dmiTable, 3, 1, str.tostring(adx, "#.##"), text_color=adxColor)
+
+signal = 
+  dip >= 25 and dip > din ? "Bull" : 
+  din >= 25 and din > dip ? "Bear" : "Neutral"
+table.cell(dmiTable, 4, 1, signal, 
+  text_color=signal == "Bull" ? color.lime : signal == "Bear" ? color.red : color.gray)
+
+// Update DMI values for 5m timeframe
+table.cell(dmiTable, 0, 2, "5m", text_color=color.white)
+
+plusDIcolor5 = dip5m >= din5m ? color.lime : color.silver
+minusDIcolor5 = din5m > dip5m ? color.red : color.silver
+adxColor5 = adx5m >= 25 ? color.orange : color.silver
+
+table.cell(dmiTable, 1, 2, str.tostring(dip5m, "#.##"), text_color=plusDIcolor5)
+table.cell(dmiTable, 2, 2, str.tostring(din5m, "#.##"), text_color=minusDIcolor5)
+table.cell(dmiTable, 3, 2, str.tostring(adx5m, "#.##"), text_color=adxColor5)
+
+signal5 = 
+  dip5m >= 25 and dip5m > din5m ? "Bull" : 
+  din5m >= 25 and din5m > dip5m ? "Bear" : "Neutral"
+table.cell(dmiTable, 4, 2, signal5, 
+  text_color=signal5 == "Bull" ? color.lime : signal5 == "Bear" ? color.red : color.gray)
+
+// Update DMI values for 15m timeframe
+table.cell(dmiTable, 0, 3, "15m", text_color=color.white)
+
+// Color coding for +DI/-DI
+plusDIcolor15 = dip15m >= din15m ? color.lime : color.silver
+minusDIcolor15 = din15m > dip15m ? color.red : color.silver
+adxColor15 = adx15m >= 25 ? color.orange : color.silver
+
+table.cell(dmiTable, 1, 3, str.tostring(dip15m, "#.##"), text_color=plusDIcolor15)
+table.cell(dmiTable, 2, 3, str.tostring(din15m, "#.##"), text_color=minusDIcolor15)
+table.cell(dmiTable, 3, 3, str.tostring(adx15m, "#.##"), text_color=adxColor15)
+
+// Signal status for 15m
+signal15 = 
+  dip15m >= 25 and dip15m > din15m ? "Bull" : 
+  din15m >= 25 and din15m > dip15m ? "Bear" : "Neutral"
+table.cell(dmiTable, 4, 3, signal15, 
+  text_color=signal15 == "Bull" ? color.lime : signal15 == "Bear" ? color.red : color.gray)
