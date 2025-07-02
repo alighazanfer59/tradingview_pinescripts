@@ -2,27 +2,43 @@
 // © pidepython / https://www.fiverr.com/alighazanfer59/build-algotrading-backtesting-screening-data-tools
 
 //@version=6
-strategy("DMI Trintiy Strategy", overlay=true, default_qty_type=strategy.fixed, default_qty_value=2, calc_on_every_tick = true)
+strategy("DMI Trintiy Strategy", overlay=true, default_qty_type=strategy.fixed, default_qty_value=2)
 
 //========== PHASE 1: CORE FRAMEWORK ==========//
 
 //--- 1. Timeframe Selection ---//
-tf2 = input.bool(false, "2 Minutes", group="Timeframe Selection", inline="1")
-tf3 = input.bool(false, "3 Minutes", group="Timeframe Selection", inline="1")
-tf5 = input.bool(true, "5 Minutes", group="Timeframe Selection", inline="1")
-tf15 = input.bool(true, "15 Minutes", group="Timeframe Selection", inline="2")
-tf30 = input.bool(false, "30 Minutes", group="Timeframe Selection", inline="2")
-tf60 = input.bool(false, "1 Hour", group="Timeframe Selection", inline="2")
-tf240 = input.bool(false, "4 Hours", group="Timeframe Selection", inline="3")
-tfD = input.bool(false, "Daily", group="Timeframe Selection", inline="3")
+tf2 = input.bool(false, "2 Minutes:     ", group="Timeframe Selection", inline="1", display = display.all-display.status_line)
+i_dmiLength_tf2 = input.int(14, "Length", minval=1, group="Timeframe Selection", inline = "1")
+i_dmiSmoothing_tf2 = input.int(14, "W. Avg.", minval=1, group="Timeframe Selection", inline = "1")
+tf3 = input.bool(false, "3 Minutes:     ", group="Timeframe Selection", inline="2")
+i_dmiLength_tf3 = input.int(14, "Length", minval=1, group="Timeframe Selection", inline = "2")
+i_dmiSmoothing_tf3 = input.int(14, "W.Avg.", minval=1, group="Timeframe Selection", inline = "2")
+tf5 = input.bool(true, "5 Minutes:      ", group="Timeframe Selection", inline="3")
+i_dmiLength_tf5 = input.int(14, "Length", minval=1, group="Timeframe Selection", inline = "3")
+i_dmiSmoothing_tf5 = input.int(14, "W.Avg.", minval=1, group="Timeframe Selection", inline = "3")
+tf15 = input.bool(true, "15 Minutes:        ", group="Timeframe Selection", inline="4")
+i_dmiLength_tf15 = input.int(14, "Length", minval=1, group="Timeframe Selection", inline = "4")
+i_dmiSmoothing_tf15 = input.int(14, "W.Avg.", minval=1, group="Timeframe Selection", inline = "4")
+tf30 = input.bool(false, "30 Minutes:       ", group="Timeframe Selection", inline="5")
+i_dmiLength_tf30 = input.int(14, "Length", minval=1, group="Timeframe Selection", inline = "5")
+i_dmiSmoothing_tf30 = input.int(14, "W.Avg.", minval=1, group="Timeframe Selection", inline = "5")
+tf60 = input.bool(false, "1 Hour:       ", group="Timeframe Selection", inline="6")
+i_dmiLength_tf60 = input.int(14, "Length", minval=1, group="Timeframe Selection", inline = "6")
+i_dmiSmoothing_tf60 = input.int(14, "W.Avg.", minval=1, group="Timeframe Selection", inline = "6")
+tf240 = input.bool(false, "4 Hours:     ", group="Timeframe Selection", inline="7")
+i_dmiLength_tf240 = input.int(14, "Length", minval=1, group="Timeframe Selection", inline = "7")
+i_dmiSmoothing_tf240 = input.int(14, "W.Avg.", minval=1, group="Timeframe Selection", inline = "7")
+tfD = input.bool(false, "Daily:     ", group="Timeframe Selection", inline="8")
+i_dmiLength_tfD = input.int(14, "Length", minval=1, group="Timeframe Selection", inline = "8")
+i_dmiSmoothing_tfD = input.int(14, "W.Avg.", minval=1, group="Timeframe Selection", inline = "8")
 
 
 //--- 2. Condition Type Selection ---//
 conditionType = input.string("DMI", "Condition Type", options=["DMI", "ADX"], group="Strategy Settings")
 
 //--- 3. Indicator Parameters ---//
-i_dmiLength = input.int(14, "Length", minval=1, group="DMI/ADX Settings")
-i_dmiSmoothing = input.int(14, "Smoothing", minval=1, group="DMI/ADX Settings")
+i_dmiLength = input.int(9, "Length", minval=1, group="DMI/ADX Settings")
+i_dmiSmoothing = input.int(9, "Welders's Avg.", minval=1, group="DMI/ADX Settings")
 i_atrLength = input.int(10, "ATR Length", minval=1, group = "TASC Indicator Settings", tooltip = "TASC supertrend Calculation, a lower value will make the system more sensitive to trend reversal")
 i_mult = input.float(3.0, "Multiplier", minval=0.1, step=0.1, group = "TASC Indicator Settings", tooltip = "TASC supertrend Calculation, a lower value will make the system more sensitive to trend reversal")
 
@@ -78,10 +94,11 @@ int   length = i_atrLength  // (reuse the i_atrLength input)
 
 [st, dir] = ta.supertrend(multi, length)
 
-bool isNewTrend = ta.change(dir) != 0
+var bool isNewTrend = false
+isNewTrend := ta.change(dir) != 0
 
-plot(dir < 0 ? st : na, "Up direction", color = color.green, style=plot.style_linebr, linewidth = 3)
-plot(dir > 0 ? st : na, "Down direction", color = color.red, style=plot.style_linebr, linewidth = 3)
+plot(dir < 0 ? st : na, "Up direction", color = color.green, style=plot.style_steplinebr, linewidth = 4)
+plot(dir > 0 ? st : na, "Down direction", color = color.red, style=plot.style_steplinebr, linewidth = 4)
 
 // Trading signals
 bool TASCbuyCondition = useTASC_SE ? isNewTrend and dir == -1 : true
@@ -127,13 +144,20 @@ adxbuyCond = conditionType == 'ADX' ? (dip > din and adx >= 25 and adxbuyCond5m 
 adxsellCond = conditionType == 'ADX' ? (dip < din and adx >= 25 and adxbuyCond5m and adxbuyCond15m) : true
 
 // TASC continuation signal
+barsSinceNewTrend = ta.barssince(isNewTrend) + 1
+trend_sw_high = not na(barsSinceNewTrend) ? ta.highest(high, barsSinceNewTrend) : na
+trend_sw_low = not na(barsSinceNewTrend) ? ta.lowest(low, barsSinceNewTrend) : na
 
+TASC_Cont_buyCond = (st > st[1] and dir == -1 and trend_sw_high > trend_sw_high[1]) or not useTASC_CE
+TASC_Cont_sellCond = (st < st[1] and dir == 1 and trend_sw_low < trend_sw_low[1]) or not useTASC_CE
 
 // ===== ENTRY SIGNALS ===== //
 // Existing signal definitions
-buySignal = TASCbuyCondition and dmibuyCond and adxbuyCond and can_trade_today and time_sess_good and strategy.position_size == 0
-sellSignal = TASCsellConditon and dmisellCond and adxsellCond and can_trade_today and time_sess_good and strategy.position_size == 0
-
+buySignal = (TASCbuyCondition or TASC_Cont_buyCond) and dmibuyCond and adxbuyCond and 
+     can_trade_today and time_sess_good and strategy.position_size == 0
+     
+sellSignal = (TASCsellConditon or TASC_Cont_sellCond) and dmisellCond and adxsellCond and
+     can_trade_today and time_sess_good and strategy.position_size == 0
 
 // Save stops & targets
 var float longStop = na
@@ -241,7 +265,13 @@ plotchar(TASCsellConditon ? 1 : 0, 'TASC Sell Entry Signal', " ", color = color.
 plotchar(adxbuyCond ? 1 : 0, 'ADX buy Condition', " ", color = color.blue)
 plotchar(adxsellCond ? 1 : 0, 'ADX sell Condition', " ", color = color.blue)
 
-plotchar(ta.barssince(isNewTrend), 'Number of bars in current trend')
+// plot(close, "close")
+plotchar(trend_sw_high, 'Current trend high', " ")
+
+plotshape(TASC_Cont_buyCond, title="Cont. Signal", text="Cont. Sig.",
+  style=shape.labeldown, location=location.abovebar, 
+  color=color.new(color.green, 0), textcolor=color.white, size=size.small)
+
 // ===== CREATE DMI/ADX DISPLAY TABLE ===== //
 // var table dmiTable = table.new(position.top_right, 5, 4, border_width=1, bgcolor=color.rgb(33, 40, 48))
 
