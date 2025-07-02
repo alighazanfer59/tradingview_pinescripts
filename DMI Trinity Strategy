@@ -2,7 +2,7 @@
 // © pidepython / https://www.fiverr.com/alighazanfer59/build-algotrading-backtesting-screening-data-tools
 
 //@version=6
-strategy("DMI Trintiy Strategy", overlay=true, default_qty_type=strategy.fixed, default_qty_value=2)
+strategy("DMI Trintiy Strategy", overlay=true, default_qty_type=strategy.fixed, default_qty_value=2, calc_on_every_tick = true)
 
 //========== PHASE 1: CORE FRAMEWORK ==========//
 
@@ -16,34 +16,6 @@ tf60 = input.bool(false, "1 Hour", group="Timeframe Selection", inline="2")
 tf240 = input.bool(false, "4 Hours", group="Timeframe Selection", inline="3")
 tfD = input.bool(false, "Daily", group="Timeframe Selection", inline="3")
 
-// Create arrays of selected timeframes and resolutions
-var string[] selectedTFs = array.new_string()
-var int[] resolutions = array.new_int()
-
-if tf2
-    array.push(selectedTFs, "2")
-    array.push(resolutions, 2)
-if tf3
-    array.push(selectedTFs, "3")
-    array.push(resolutions, 3)
-if tf5
-    array.push(selectedTFs, "5")
-    array.push(resolutions, 5)
-if tf15
-    array.push(selectedTFs, "15")
-    array.push(resolutions, 15)
-if tf30
-    array.push(selectedTFs, "30")
-    array.push(resolutions, 30)
-if tf60
-    array.push(selectedTFs, "60")
-    array.push(resolutions, 60)
-if tf240
-    array.push(selectedTFs, "240")
-    array.push(resolutions, 240)
-if tfD
-    array.push(selectedTFs, "D")
-    array.push(resolutions, 1440)  // Minutes in a day
 
 //--- 2. Condition Type Selection ---//
 conditionType = input.string("DMI", "Condition Type", options=["DMI", "ADX"], group="Strategy Settings")
@@ -55,7 +27,7 @@ i_atrLength = input.int(10, "ATR Length", minval=1, group = "TASC Indicator Sett
 i_mult = input.float(3.0, "Multiplier", minval=0.1, step=0.1, group = "TASC Indicator Settings", tooltip = "TASC supertrend Calculation, a lower value will make the system more sensitive to trend reversal")
 
 //--- 4. Trigger Conditions ---//
-useTASC_SE = input.bool(true, "TASC Entry Signal", group="Trigger Settings")
+useTASC_SE = input.bool(false, "TASC Entry Signal", group="Trigger Settings")
 useTASC_CE = input.bool(false, "TASC Continuation", group="Trigger Settings")
 
 //--- 5. Trading Session ---//
@@ -76,12 +48,6 @@ i_pts_to_BE = input.int(10, "Points to Trigger Breakeven", group="Trade Manageme
 i_daily_profit_target = input.float(10000.0, "Daily Profit Target (USD)", minval=100.0, step = 100.0, group = "Trade Management")
 i_daily_loss_limit = input.float(10000.0, "Daily Loss Limit (USD)", minval=100.0, step = 100.0, group = "Trade Management")
 
-// //========== DISPLAY SETUP ==========//
-// var table setupTable = table.new(position.top_right, 3, 1, bgcolor=color.new(color.gray, 90))
-// table.cell(setupTable, 0, 0, "DMI Trinity Active\nTimeframe: " + triggerTf + "\nCondition: " + conditionType, 
-//   text_color=color.white, text_size=size.normal)
-
-//========== PLACEHOLDER FOR PHASE 2 LOGIC ==========//
 
 // === Daily PnL Tracking Based on End-of-Day Equity === //
 var float equity_at_yesterday_close = na
@@ -118,8 +84,8 @@ plot(dir < 0 ? st : na, "Up direction", color = color.green, style=plot.style_li
 plot(dir > 0 ? st : na, "Down direction", color = color.red, style=plot.style_linebr, linewidth = 3)
 
 // Trading signals
-TASCbuyCondition = isNewTrend and dir == -1
-TASCsellConditon = isNewTrend and dir == 1
+bool TASCbuyCondition = useTASC_SE ? isNewTrend and dir == -1 : true
+bool TASCsellConditon = useTASC_SE ? isNewTrend and dir == 1 : true
 
 // ===== PHASE 2: MTF DMI/ADX LOGIC ===== //
 // Initialize condition arrays
@@ -145,46 +111,32 @@ array.clear(adxConditions)
         
 // Get DMI/ADX values using wrapper function
 
-[dip5m, din5m, adx5m] = request.security(syminfo.tickerid, '5', dmiWrapper(i_dmiLength, i_dmiSmoothing), lookahead=barmerge.lookahead_off)
+[dip5m, din5m, adx5m] = request.security(syminfo.tickerid, '5', dmiWrapper(i_dmiLength, i_dmiSmoothing))
         
 // Check conditions per timeframe
-dmibuyCond5m = dip5m > din5m and dip5m >= 25
-dmisellCond5m = din5m > dip5m and din5m >= 25
-// bool adxCond = adxHTF >= 25
+bool dmibuyCond5m = dip5m > din5m and dip5m >= 25
+bool dmisellCond5m = dip5m < dip5m and din5m >= 25
+bool adxbuyCond5m = dip5m > din5m and adx5m >= 25
+bool adxsellCond5m = dip5m < din5m and adx5m >= 25
 
-[dip15m, din15m, adx15m] = request.security(syminfo.tickerid, '15', dmiWrapper(i_dmiLength, i_dmiSmoothing), lookahead=barmerge.lookahead_off)
+[dip15m, din15m, adx15m] = request.security(syminfo.tickerid, '15', dmiWrapper(i_dmiLength, i_dmiSmoothing))
         
 // Check conditions per timeframe
-dmibuyCond15m = dip15m > din15m and dip15m >= 25
-dmisellCond15m = din15m > dip15m and din15m >= 25
-        
+bool dmibuyCond15m = dip15m > din15m and dip15m >= 25
+bool dmisellCond15m = dip15m > din15m and din15m >= 25
+bool adxbuyCond15m = dip15m > din15m and adx15m >= 25
+bool adxsellCond15m = dip15m < din15m and adx15m >= 25
+
 [dip, din, adx] = dmiWrapper(i_dmiLength, i_dmiSmoothing)
-dmibuyCond = dip > din and dip >= 25 and dmibuyCond5m and dmibuyCond15m and conditionType == 'DMI'
-dmisellCond = din > dip and din >= 25 and dmisellCond5m and dmisellCond15m and conditionType == 'DMI'
-// Store conditions
-// array.push(bullishConditions, bullishCond)
-// array.push(bearishConditions, bearishCond)
-// array.push(adxConditions, adxCond)
-
-// Function to check if all elements in array are true
-// allTrue(array) =>
-//     bool result = true
-//     if array.size(array) > 0
-//         for i = 0 to array.size(array) - 1
-//             if not array.get(array, i)
-//                 result := false
-//                 break
-//     result
-
-// Check if ALL selected TFs meet conditions
-// allBullish = allTrue(bullishConditions)
-// allBearish = allTrue(bearishConditions)
-// allAdx = allTrue(adxConditions)
+dmibuyCond = conditionType == 'DMI' ? (dip > din and dip >= 25 and dmibuyCond5m and dmibuyCond15m) : true 
+dmisellCond = conditionType == 'DMI' ? (din > dip and din >= 25 and dmisellCond5m and dmisellCond15m) : true
+adxbuyCond = conditionType == 'ADX' ? (dip > din and adx >= 25 and adxbuyCond5m and adxbuyCond15m) : true
+adxsellCond = conditionType == 'ADX' ? (dip < din and adx >= 25 and adxbuyCond5m and adxbuyCond15m) : true
 
 // ===== ENTRY SIGNALS ===== //
 // Existing signal definitions
-buySignal = TASCbuyCondition and dmibuyCond and can_trade_today and time_sess_good
-sellSignal = TASCsellConditon and dmisellCond and can_trade_today and time_sess_good
+buySignal = TASCbuyCondition and dmibuyCond and adxbuyCond and can_trade_today and time_sess_good and strategy.position_size == 0
+sellSignal = TASCsellConditon and dmisellCond and adxsellCond and can_trade_today and time_sess_good and strategy.position_size == 0
 
 
 // Save stops & targets
@@ -197,7 +149,7 @@ var float shortTarget2 = na
 var float tradeSize = na
 
 // Strategy execution
-if buySignal
+if buySignal 
     strategy.entry("Long", strategy.long, qty=i_contracts)
     longStop := na
     longTarget1 := na
@@ -265,75 +217,113 @@ plotshape(sellSignal, title="Sell Signal", text="SELL",
 
 // Draw stops & targets
 plot(strategy.position_size > 0 ? longStop : na,   color=color.red,   style=plot.style_linebr, title="Stop Loss")
-plot(strategy.position_size > 0 ? longTarget1 : na, color=color.green, style=plot.style_linebr, title="Profit Target 1")
-plot(strategy.position_size > 0 ? longTarget2 : na, color=color.green, style=plot.style_linebr, title="Profit Target 2")
+plot(strategy.position_size > 0 ? longTarget1 : na, color=color.green, style=plot.style_linebr, title="Long Profit Target 1")
+plot(strategy.position_size > 0 ? longTarget2 : na, color=color.green, style=plot.style_linebr, title="Long Profit Target 2")
 
 plot(strategy.position_size < 0 ? shortStop : na,   color=color.red,   style=plot.style_linebr, title="Stop Loss")
-plot(strategy.position_size < 0 ? shortTarget1 : na, color=color.green, style=plot.style_linebr, title="Profit Target 1")
-plot(strategy.position_size < 0 ? shortTarget2 : na, color=color.green, style=plot.style_linebr, title="Profit Target 2")
+plot(strategy.position_size < 0 ? shortTarget1 : na, color=color.green, style=plot.style_linebr, title="Short Profit Target 1")
+plot(strategy.position_size < 0 ? shortTarget2 : na, color=color.green, style=plot.style_linebr, title="Short Profit Target 2")
 
 
 // ===== CREATE DMI/ADX DISPLAY TABLE ===== //
-var table dmiTable = table.new(position.top_right, 5, 4, border_width=1, bgcolor=color.rgb(33, 40, 48))
+// var table dmiTable = table.new(position.top_right, 5, 4, border_width=1, bgcolor=color.rgb(33, 40, 48))
 
-// Table headers
-if barstate.isfirst
-    table.cell(dmiTable, 0, 0, "TF", bgcolor=color.gray, text_color=color.white)
-    table.cell(dmiTable, 1, 0, "+DI", bgcolor=color.gray, text_color=color.white)
-    table.cell(dmiTable, 2, 0, "-DI", bgcolor=color.gray, text_color=color.white)
-    table.cell(dmiTable, 3, 0, "ADX", bgcolor=color.gray, text_color=color.white)
-    table.cell(dmiTable, 4, 0, "Signal", bgcolor=color.gray, text_color=color.white)
+// // Initialize table on first bar
+// if barstate.isfirst
+//     // Headers
+//     table.cell(dmiTable, 0, 0, "TF", bgcolor=color.gray, text_color=color.white)
+//     table.cell(dmiTable, 1, 0, "+DI", bgcolor=color.gray, text_color=color.white)
+//     table.cell(dmiTable, 2, 0, "-DI", bgcolor=color.gray, text_color=color.white)
+//     table.cell(dmiTable, 3, 0, "ADX", bgcolor=color.gray, text_color=color.white)
+//     table.cell(dmiTable, 4, 0, "Signal", bgcolor=color.gray, text_color=color.white)
+    
+//     // Initialize all cells (required for updates)
+//     for row = 1 to 3
+//         table.cell(dmiTable, 0, row, "")
+//         table.cell(dmiTable, 1, row, "")
+//         table.cell(dmiTable, 2, row, "")
+//         table.cell(dmiTable, 3, row, "")
+//         table.cell(dmiTable, 4, row, "")
 
-// Update DMI values for 1m timeframe
-table.cell(dmiTable, 0, 1, "1m", text_color=color.white)
+// // Update DMI values for 1m timeframe
+// table.cell_set_text(dmiTable, 0, 1, "1m")
+// table.cell_set_text(dmiTable, 1, 1, str.tostring(dip, "#.##"))
+// table.cell_set_text(dmiTable, 2, 1, str.tostring(din, "#.##"))
+// table.cell_set_text(dmiTable, 3, 1, str.tostring(adx, "#.##"))
 
-// Color coding for +DI/-DI
-plusDIcolor = dip >= din ? color.lime : color.silver
-minusDIcolor = din > dip ? color.red : color.silver
-adxColor = adx >= 25 ? color.orange : color.silver
+// // Color coding for +DI/-DI
+// plusDIcolor = dip >= din ? color.lime : color.silver
+// minusDIcolor = din > dip ? color.red : color.silver
+// adxColor = adx >= 25 ? color.orange : color.silver
 
-table.cell(dmiTable, 1, 1, str.tostring(dip, "#.##"), text_color=plusDIcolor)
-table.cell(dmiTable, 2, 1, str.tostring(din, "#.##"), text_color=minusDIcolor)
-table.cell(dmiTable, 3, 1, str.tostring(adx, "#.##"), text_color=adxColor)
+// table.cell_set_text_color(dmiTable, 1, 1, plusDIcolor)
+// table.cell_set_text_color(dmiTable, 2, 1, minusDIcolor)
+// table.cell_set_text_color(dmiTable, 3, 1, adxColor)
 
-signal = 
-  dip >= 25 and dip > din ? "Bull" : 
-  din >= 25 and din > dip ? "Bear" : "Neutral"
-table.cell(dmiTable, 4, 1, signal, 
-  text_color=signal == "Bull" ? color.lime : signal == "Bear" ? color.red : color.gray)
+// signal = 
+//   dip >= 25 and dip > din ? "Bull" : 
+//   din >= 25 and din > dip ? "Bear" : "Neutral"
+// table.cell_set_text(dmiTable, 4, 1, signal)
+// table.cell_set_text_color(dmiTable, 4, 1, signal == "Bull" ? color.lime : signal == "Bear" ? color.red : color.gray)
 
-// Update DMI values for 5m timeframe
-table.cell(dmiTable, 0, 2, "5m", text_color=color.white)
+// // Update DMI values for 5m timeframe
+// table.cell_set_text(dmiTable, 0, 2, "5m")
+// table.cell_set_text(dmiTable, 1, 2, str.tostring(dip5m, "#.##"))
+// table.cell_set_text(dmiTable, 2, 2, str.tostring(din5m, "#.##"))
+// table.cell_set_text(dmiTable, 3, 2, str.tostring(adx5m, "#.##"))
 
-plusDIcolor5 = dip5m >= din5m ? color.lime : color.silver
-minusDIcolor5 = din5m > dip5m ? color.red : color.silver
-adxColor5 = adx5m >= 25 ? color.orange : color.silver
+// plusDIcolor5 = dip5m >= din5m ? color.lime : color.silver
+// minusDIcolor5 = din5m > dip5m ? color.red : color.silver
+// adxColor5 = adx5m >= 25 ? color.orange : color.silver
 
-table.cell(dmiTable, 1, 2, str.tostring(dip5m, "#.##"), text_color=plusDIcolor5)
-table.cell(dmiTable, 2, 2, str.tostring(din5m, "#.##"), text_color=minusDIcolor5)
-table.cell(dmiTable, 3, 2, str.tostring(adx5m, "#.##"), text_color=adxColor5)
+// table.cell_set_text_color(dmiTable, 1, 2, plusDIcolor5)
+// table.cell_set_text_color(dmiTable, 2, 2, minusDIcolor5)
+// table.cell_set_text_color(dmiTable, 3, 2, adxColor5)
 
-signal5 = 
-  dip5m >= 25 and dip5m > din5m ? "Bull" : 
-  din5m >= 25 and din5m > dip5m ? "Bear" : "Neutral"
-table.cell(dmiTable, 4, 2, signal5, 
-  text_color=signal5 == "Bull" ? color.lime : signal5 == "Bear" ? color.red : color.gray)
+// signal5 = 
+//   dip5m >= 25 and dip5m > din5m ? "Bull" : 
+//   din5m >= 25 and din5m > dip5m ? "Bear" : "Neutral"
+// table.cell_set_text(dmiTable, 4, 2, signal5)
+// table.cell_set_text_color(dmiTable, 4, 2, signal5 == "Bull" ? color.lime : signal5 == "Bear" ? color.red : color.gray)
 
-// Update DMI values for 15m timeframe
-table.cell(dmiTable, 0, 3, "15m", text_color=color.white)
+// // Update DMI values for 15m timeframe
+// table.cell_set_text(dmiTable, 0, 3, "15m")
+// table.cell_set_text(dmiTable, 1, 3, str.tostring(dip15m, "#.##"))
+// table.cell_set_text(dmiTable, 2, 3, str.tostring(din15m, "#.##"))
+// table.cell_set_text(dmiTable, 3, 3, str.tostring(adx15m, "#.##"))
 
-// Color coding for +DI/-DI
-plusDIcolor15 = dip15m >= din15m ? color.lime : color.silver
-minusDIcolor15 = din15m > dip15m ? color.red : color.silver
-adxColor15 = adx15m >= 25 ? color.orange : color.silver
+// // Color coding for +DI/-DI
+// plusDIcolor15 = dip15m >= din15m ? color.lime : color.silver
+// minusDIcolor15 = din15m > dip15m ? color.red : color.silver
+// adxColor15 = adx15m >= 25 ? color.orange : color.silver
 
-table.cell(dmiTable, 1, 3, str.tostring(dip15m, "#.##"), text_color=plusDIcolor15)
-table.cell(dmiTable, 2, 3, str.tostring(din15m, "#.##"), text_color=minusDIcolor15)
-table.cell(dmiTable, 3, 3, str.tostring(adx15m, "#.##"), text_color=adxColor15)
+// table.cell_set_text_color(dmiTable, 1, 3, plusDIcolor15)
+// table.cell_set_text_color(dmiTable, 2, 3, minusDIcolor15)
+// table.cell_set_text_color(dmiTable, 3, 3, adxColor15)
 
-// Signal status for 15m
-signal15 = 
-  dip15m >= 25 and dip15m > din15m ? "Bull" : 
-  din15m >= 25 and din15m > dip15m ? "Bear" : "Neutral"
-table.cell(dmiTable, 4, 3, signal15, 
-  text_color=signal15 == "Bull" ? color.lime : signal15 == "Bear" ? color.red : color.gray)
+// // Signal status for 15m
+// signal15 = 
+//   dip15m >= 25 and dip15m > din15m ? "Bull" : 
+//   din15m >= 25 and din15m > dip15m ? "Bear" : "Neutral"
+// table.cell_set_text(dmiTable, 4, 3, signal15)
+// table.cell_set_text_color(dmiTable, 4, 3, signal15 == "Bull" ? color.lime : signal15 == "Bear" ? color.red : color.gray)
+
+// Debugging
+plotchar(dip, 'dip', " ")
+plotchar(dip5m, 'dip5m', " ")
+plotchar(dip15m, 'dip15m', " ")
+
+plotchar(din, 'din', " ")
+plotchar(din5m, 'din5m', " ")
+plotchar(din15m, 'din15m', " ")
+
+plotchar(adx, 'adx', " ")
+plotchar(adx5m, 'din5m', " ")
+plotchar(adx15m, 'din15m', " ")
+
+plotchar(dmibuyCond ? 1 : 0, 'DMI buy Condition', " ")
+plotchar(dmisellCond ? 1 : 0, 'DMI sell Condition', " ")
+plotchar(TASCbuyCondition ? 1 : 0, 'TASC Buy Entry Signal', " ")
+plotchar(TASCsellConditon ? 1 : 0, 'TASC Sell Entry Signal', " ")
+plotchar(adxbuyCond ? 1 : 0, 'ADX buy Condition', " ")
+plotchar(adxsellCond ? 1 : 0, 'ADX sell Condition', " ")
