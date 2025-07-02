@@ -104,13 +104,6 @@ array.clear(bullishConditions)
 array.clear(bearishConditions)
 array.clear(adxConditions)
 
-// Calculate MTF conditions
-// if array.size(selectedTFs) > 0
-//     for i = 0 to array.size(selectedTFs) - 1
-//         string tf = array.get(selectedTFs, i)
-        
-// Get DMI/ADX values using wrapper function
-
 [dip5m, din5m, adx5m] = request.security(syminfo.tickerid, '5', dmiWrapper(i_dmiLength, i_dmiSmoothing))
         
 // Check conditions per timeframe
@@ -132,6 +125,9 @@ dmibuyCond = conditionType == 'DMI' ? (dip > din and dip >= 25 and dmibuyCond5m 
 dmisellCond = conditionType == 'DMI' ? (din > dip and din >= 25 and dmisellCond5m and dmisellCond15m) : true
 adxbuyCond = conditionType == 'ADX' ? (dip > din and adx >= 25 and adxbuyCond5m and adxbuyCond15m) : true
 adxsellCond = conditionType == 'ADX' ? (dip < din and adx >= 25 and adxbuyCond5m and adxbuyCond15m) : true
+
+// TASC continuation signal
+
 
 // ===== ENTRY SIGNALS ===== //
 // Existing signal definitions
@@ -225,6 +221,27 @@ plot(strategy.position_size < 0 ? shortTarget1 : na, color=color.green, style=pl
 plot(strategy.position_size < 0 ? shortTarget2 : na, color=color.green, style=plot.style_linebr, title="Short Profit Target 2")
 
 
+// Debugging
+plotchar(dip, 'dip', " ", color = color.green)
+plotchar(dip5m, 'dip5m', " ", color = color.green)
+plotchar(dip15m, 'dip15m', " ", color = color.green)
+
+plotchar(din, 'din', " ", color = color.red)
+plotchar(din5m, 'din5m', " ", color =  color.red)
+plotchar(din15m, 'din15m', " ", color =  color.red)
+
+plotchar(adx, 'adx', " ", color = color.blue)
+plotchar(adx5m, 'din5m', " ", color =  color.blue)
+plotchar(adx15m, 'din15m', " ", color =  color.blue)
+
+plotchar(dmibuyCond ? 1 : 0, 'DMI buy Condition', " ", color = color.green)
+plotchar(dmisellCond ? 1 : 0, 'DMI sell Condition', " ", color = color.green)
+plotchar(TASCbuyCondition ? 1 : 0, 'TASC Buy Entry Signal', " ", color = color.white)
+plotchar(TASCsellConditon ? 1 : 0, 'TASC Sell Entry Signal', " ", color = color.white)
+plotchar(adxbuyCond ? 1 : 0, 'ADX buy Condition', " ", color = color.blue)
+plotchar(adxsellCond ? 1 : 0, 'ADX sell Condition', " ", color = color.blue)
+
+plotchar(ta.barssince(isNewTrend), 'Number of bars in current trend')
 // ===== CREATE DMI/ADX DISPLAY TABLE ===== //
 // var table dmiTable = table.new(position.top_right, 5, 4, border_width=1, bgcolor=color.rgb(33, 40, 48))
 
@@ -307,23 +324,3 @@ plot(strategy.position_size < 0 ? shortTarget2 : na, color=color.green, style=pl
 //   din15m >= 25 and din15m > dip15m ? "Bear" : "Neutral"
 // table.cell_set_text(dmiTable, 4, 3, signal15)
 // table.cell_set_text_color(dmiTable, 4, 3, signal15 == "Bull" ? color.lime : signal15 == "Bear" ? color.red : color.gray)
-
-// Debugging
-plotchar(dip, 'dip', " ")
-plotchar(dip5m, 'dip5m', " ")
-plotchar(dip15m, 'dip15m', " ")
-
-plotchar(din, 'din', " ")
-plotchar(din5m, 'din5m', " ")
-plotchar(din15m, 'din15m', " ")
-
-plotchar(adx, 'adx', " ")
-plotchar(adx5m, 'din5m', " ")
-plotchar(adx15m, 'din15m', " ")
-
-plotchar(dmibuyCond ? 1 : 0, 'DMI buy Condition', " ")
-plotchar(dmisellCond ? 1 : 0, 'DMI sell Condition', " ")
-plotchar(TASCbuyCondition ? 1 : 0, 'TASC Buy Entry Signal', " ")
-plotchar(TASCsellConditon ? 1 : 0, 'TASC Sell Entry Signal', " ")
-plotchar(adxbuyCond ? 1 : 0, 'ADX buy Condition', " ")
-plotchar(adxsellCond ? 1 : 0, 'ADX sell Condition', " ")
