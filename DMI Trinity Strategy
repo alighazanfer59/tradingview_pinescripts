@@ -5,6 +5,11 @@
 strategy("DMI Trintiy Strategy", overlay=true, default_qty_type=strategy.fixed, default_qty_value=2)
 
 //========== PHASE 1: CORE FRAMEWORK ==========//
+//--- 3. Indicator Parameters ---//
+i_dmiLength = input.int(9, "Length", minval=1, group="DMI/ADX Settings", tooltip = "Indicator Settings on chart timeframe")
+i_dmiSmoothing = input.int(9, "Welders's Avg.", minval=1, group="DMI/ADX Settings", tooltip = "Indicator Settings on chart timeframe")
+i_atrLength = input.int(10, "ATR Length", minval=1, group = "TASC Indicator Settings", tooltip = "TASC supertrend Calculation, a lower value will make the system more sensitive to trend reversal")
+i_mult = input.float(3.0, "Multiplier", minval=0.1, step=0.1, group = "TASC Indicator Settings", tooltip = "TASC supertrend Calculation, a lower value will make the system more sensitive to trend reversal")
 
 //--- 1. Timeframe Selection ---//
 tf2 = input.bool(false, "2 Minutes:     ", group="Timeframe Selection", inline="1", display = display.all-display.status_line)
@@ -35,12 +40,6 @@ i_dmiSmoothing_tfD = input.int(14, "W.Avg.", minval=1, group="Timeframe Selectio
 
 //--- 2. Condition Type Selection ---//
 conditionType = input.string("DMI", "Condition Type", options=["DMI", "ADX"], group="Strategy Settings")
-
-//--- 3. Indicator Parameters ---//
-i_dmiLength = input.int(9, "Length", minval=1, group="DMI/ADX Settings")
-i_dmiSmoothing = input.int(9, "Welders's Avg.", minval=1, group="DMI/ADX Settings")
-i_atrLength = input.int(10, "ATR Length", minval=1, group = "TASC Indicator Settings", tooltip = "TASC supertrend Calculation, a lower value will make the system more sensitive to trend reversal")
-i_mult = input.float(3.0, "Multiplier", minval=0.1, step=0.1, group = "TASC Indicator Settings", tooltip = "TASC supertrend Calculation, a lower value will make the system more sensitive to trend reversal")
 
 //--- 4. Trigger Conditions ---//
 useTASC_SE = input.bool(false, "TASC Entry Signal", group="Trigger Settings")
@@ -116,26 +115,38 @@ var bool[] bullishConditions = array.new_bool()
 var bool[] bearishConditions = array.new_bool()
 var bool[] adxConditions = array.new_bool()
 
+var bool dmibuyCond5m = false
+var bool dmisellCond5m = false
+var bool dmibuyCond15m = false
+var bool dmisellCond15m = false
+
+var bool adxbuyCond5m = false
+var bool adxsellCond5m = false
+var bool adxbuyCond15m = false
+var bool adxsellCond15m = false
+
 // Reset arrays on each bar
 array.clear(bullishConditions)
 array.clear(bearishConditions)
 array.clear(adxConditions)
 
-[dip5m, din5m, adx5m] = request.security(syminfo.tickerid, '5', dmiWrapper(i_dmiLength, i_dmiSmoothing))
+if tf5
+    [dip5m, din5m, adx5m] = request.security(syminfo.tickerid, '5', dmiWrapper(i_dmiLength, i_dmiSmoothing))
         
-// Check conditions per timeframe
-bool dmibuyCond5m = dip5m > din5m and dip5m >= 25
-bool dmisellCond5m = dip5m < dip5m and din5m >= 25
-bool adxbuyCond5m = dip5m > din5m and adx5m >= 25
-bool adxsellCond5m = dip5m < din5m and adx5m >= 25
+    // Check conditions per timeframe
+    dmibuyCond5m := dip5m > din5m and dip5m >= 25
+    dmisellCond5m := dip5m < dip5m and din5m >= 25
+    adxbuyCond5m := dip5m > din5m and adx5m >= 25
+    adxsellCond5m := dip5m < din5m and adx5m >= 25
 
-[dip15m, din15m, adx15m] = request.security(syminfo.tickerid, '15', dmiWrapper(i_dmiLength, i_dmiSmoothing))
-        
-// Check conditions per timeframe
-bool dmibuyCond15m = dip15m > din15m and dip15m >= 25
-bool dmisellCond15m = dip15m > din15m and din15m >= 25
-bool adxbuyCond15m = dip15m > din15m and adx15m >= 25
-bool adxsellCond15m = dip15m < din15m and adx15m >= 25
+if tf15
+    [dip15m, din15m, adx15m] = request.security(syminfo.tickerid, '15', dmiWrapper(i_dmiLength, i_dmiSmoothing))
+            
+    // Check conditions per timeframe
+    dmibuyCond15m := dip15m > din15m and dip15m >= 25
+    dmisellCond15m := dip15m > din15m and din15m >= 25
+    adxbuyCond15m := dip15m > din15m and adx15m >= 25
+    adxsellCond15m := dip15m < din15m and adx15m >= 25
 
 [dip, din, adx] = dmiWrapper(i_dmiLength, i_dmiSmoothing)
 dmibuyCond = conditionType == 'DMI' ? (dip > din and dip >= 25 and dmibuyCond5m and dmibuyCond15m) : true 
@@ -247,16 +258,16 @@ plot(strategy.position_size < 0 ? shortTarget2 : na, color=color.green, style=pl
 
 // Debugging
 plotchar(dip, 'dip', " ", color = color.green)
-plotchar(dip5m, 'dip5m', " ", color = color.green)
-plotchar(dip15m, 'dip15m', " ", color = color.green)
+// plotchar(dip5m, 'dip5m', " ", color = color.green)
+// plotchar(dip15m, 'dip15m', " ", color = color.green)
 
 plotchar(din, 'din', " ", color = color.red)
-plotchar(din5m, 'din5m', " ", color =  color.red)
-plotchar(din15m, 'din15m', " ", color =  color.red)
+// plotchar(din5m, 'din5m', " ", color =  color.red)
+// plotchar(din15m, 'din15m', " ", color =  color.red)
 
 plotchar(adx, 'adx', " ", color = color.blue)
-plotchar(adx5m, 'din5m', " ", color =  color.blue)
-plotchar(adx15m, 'din15m', " ", color =  color.blue)
+// plotchar(adx5m, 'adx5m', " ", color =  color.blue)
+// plotchar(adx15m, 'adx15m', " ", color =  color.blue)
 
 plotchar(dmibuyCond ? 1 : 0, 'DMI buy Condition', " ", color = color.green)
 plotchar(dmisellCond ? 1 : 0, 'DMI sell Condition', " ", color = color.green)
