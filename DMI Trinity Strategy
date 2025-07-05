@@ -12,28 +12,28 @@ i_atrLength = input.int(10, "ATR Length", minval=1, group = "TASC Indicator Sett
 i_mult = input.float(3.0, "Multiplier", minval=0.1, step=0.1, group = "TASC Indicator Settings", tooltip = "TASC supertrend Calculation, a lower value will make the system more sensitive to trend reversal")
 
 //--- 1. Timeframe Selection ---//
-tf2 = input.bool(false, "2 Minutes:     ", group="Timeframe Selection", inline="1", display = display.all-display.status_line)
+tf2 = input.bool(false, "2 Minutes:     ", group="Timeframe Selection", inline="1", display = display.none)
 i_dmiLength_tf2 = input.int(14, "Length", minval=1, group="Timeframe Selection", inline = "1")
 i_dmiSmoothing_tf2 = input.int(14, "W. Avg.", minval=1, group="Timeframe Selection", inline = "1")
-tf3 = input.bool(false, "3 Minutes:     ", group="Timeframe Selection", inline="2")
+tf3 = input.bool(false, "3 Minutes:     ", group="Timeframe Selection", inline="2", display = display.none)
 i_dmiLength_tf3 = input.int(14, "Length", minval=1, group="Timeframe Selection", inline = "2")
 i_dmiSmoothing_tf3 = input.int(14, "W.Avg.", minval=1, group="Timeframe Selection", inline = "2")
-tf5 = input.bool(true, "5 Minutes:      ", group="Timeframe Selection", inline="3")
+tf5 = input.bool(true, "5 Minutes:      ", group="Timeframe Selection", inline="3", display = display.none)
 i_dmiLength_tf5 = input.int(14, "Length", minval=1, group="Timeframe Selection", inline = "3")
 i_dmiSmoothing_tf5 = input.int(14, "W.Avg.", minval=1, group="Timeframe Selection", inline = "3")
-tf15 = input.bool(true, "15 Minutes:        ", group="Timeframe Selection", inline="4")
+tf15 = input.bool(true, "15 Minutes:        ", group="Timeframe Selection", inline="4", display = display.none)
 i_dmiLength_tf15 = input.int(14, "Length", minval=1, group="Timeframe Selection", inline = "4")
 i_dmiSmoothing_tf15 = input.int(14, "W.Avg.", minval=1, group="Timeframe Selection", inline = "4")
-tf30 = input.bool(false, "30 Minutes:       ", group="Timeframe Selection", inline="5")
+tf30 = input.bool(false, "30 Minutes:       ", group="Timeframe Selection", inline="5", display = display.none)
 i_dmiLength_tf30 = input.int(14, "Length", minval=1, group="Timeframe Selection", inline = "5")
 i_dmiSmoothing_tf30 = input.int(14, "W.Avg.", minval=1, group="Timeframe Selection", inline = "5")
-tf60 = input.bool(false, "1 Hour:       ", group="Timeframe Selection", inline="6")
+tf60 = input.bool(false, "1 Hour:       ", group="Timeframe Selection", inline="6", display = display.none)
 i_dmiLength_tf60 = input.int(14, "Length", minval=1, group="Timeframe Selection", inline = "6")
 i_dmiSmoothing_tf60 = input.int(14, "W.Avg.", minval=1, group="Timeframe Selection", inline = "6")
-tf240 = input.bool(false, "4 Hours:     ", group="Timeframe Selection", inline="7")
+tf240 = input.bool(false, "4 Hours:     ", group="Timeframe Selection", inline="7", display = display.none)
 i_dmiLength_tf240 = input.int(14, "Length", minval=1, group="Timeframe Selection", inline = "7")
 i_dmiSmoothing_tf240 = input.int(14, "W.Avg.", minval=1, group="Timeframe Selection", inline = "7")
-tfD = input.bool(false, "Daily:     ", group="Timeframe Selection", inline="8")
+tfD = input.bool(false, "Daily:     ", group="Timeframe Selection", inline="8", display = display.none)
 i_dmiLength_tfD = input.int(14, "Length", minval=1, group="Timeframe Selection", inline = "8")
 i_dmiSmoothing_tfD = input.int(14, "W.Avg.", minval=1, group="Timeframe Selection", inline = "8")
 
@@ -84,7 +84,7 @@ daily_pnl := strategy.equity - equity_at_today_open
 // Disable trading if outside limits
 can_trade_today := (daily_pnl < i_daily_profit_target) and (daily_pnl > -i_daily_loss_limit)
 
-// ======================================= INDICATOR CODE ============================================
+// ================================================================================== INDICATOR CODE ===============================================================================================================
 
 // TASC calculation:
 
@@ -138,109 +138,159 @@ isAdxSell(tf, length, smoothing) =>
     not na(adx) and dip < din and adx >= 25
 
 
-// ---- Timeframe: 2 Minutes ----
-var bool dmibuyCond2m = false
-var bool dmisellCond2m = false
-var bool adxbuyCond2m = false
-var bool adxsellCond2m = false
+// // ---- Timeframe: 2 Minutes ----
+// var bool dmibuyCond2m = true
+// var bool dmisellCond2m = true
+// var bool adxbuyCond2m = true
+// var bool adxsellCond2m = true
 
-if tf2
-    dmibuyCond2m   := isDmiBuy("2", i_dmiLength_tf2, i_dmiSmoothing_tf2)
-    dmisellCond2m  := isDmiSell("2", i_dmiLength_tf2, i_dmiSmoothing_tf2)
-    adxbuyCond2m   := isAdxBuy("2", i_dmiLength_tf2, i_dmiSmoothing_tf2)
-    adxsellCond2m  := isAdxSell("2", i_dmiLength_tf2, i_dmiSmoothing_tf2)
+// if tf2
+//     [dip, din, adx] = request.security(syminfo.tickerid, "2", dmiWrapper(i_dmiLength_tf2, i_dmiSmoothing_tf2))
+//     dmibuyCond2m   := not na(dip) and not na(din) and dip > din and dip >= 25
+//     dmisellCond2m  := not na(dip) and not na(din) and dip < din and din >= 25
+//     adxbuyCond2m   := not na(adx) and dip > din and adx >= 25
+//     adxsellCond2m  := not na(adx) and dip < din and adx >= 25
 
-// ---- Timeframe: 3 Minutes ----
-var bool dmibuyCond3m = false
-var bool dmisellCond3m = false
-var bool adxbuyCond3m = false
-var bool adxsellCond3m = false
+// // ---- Timeframe: 3 Minutes ----
+// var bool dmibuyCond3m = true
+// var bool dmisellCond3m = true
+// var bool adxbuyCond3m = true
+// var bool adxsellCond3m = true
 
-if tf3
-    dmibuyCond3m   := isDmiBuy("3", i_dmiLength_tf3, i_dmiSmoothing_tf3)
-    dmisellCond3m  := isDmiSell("3", i_dmiLength_tf3, i_dmiSmoothing_tf3)
-    adxbuyCond3m   := isAdxBuy("3", i_dmiLength_tf3, i_dmiSmoothing_tf3)
-    adxsellCond3m  := isAdxSell("3", i_dmiLength_tf3, i_dmiSmoothing_tf3)
+// if tf3
+//     dmibuyCond3m   := isDmiBuy("3", i_dmiLength_tf3, i_dmiSmoothing_tf3)
+//     dmisellCond3m  := isDmiSell("3", i_dmiLength_tf3, i_dmiSmoothing_tf3)
+//     adxbuyCond3m   := isAdxBuy("3", i_dmiLength_tf3, i_dmiSmoothing_tf3)
+//     adxsellCond3m  := isAdxSell("3", i_dmiLength_tf3, i_dmiSmoothing_tf3)
 
-// ---- Timeframe: 5 Minutes ----
+// // ---- Timeframe: 5 Minutes ----
 
-var bool dmibuyCond5m   = false
-var bool dmisellCond5m  = false
-var bool adxbuyCond5m   = false
-var bool adxsellCond5m  = false
+// var bool dmibuyCond5m   = true
+// var bool dmisellCond5m  = true
+// var bool adxbuyCond5m   = true
+// var bool adxsellCond5m  = true
 
-if tf5
-    dmibuyCond5m   := isDmiBuy("5", i_dmiLength_tf5, i_dmiSmoothing_tf5)
-    dmisellCond5m  := isDmiSell("5", i_dmiLength_tf5, i_dmiSmoothing_tf5)
-    adxbuyCond5m   := isAdxBuy("5", i_dmiLength_tf5, i_dmiSmoothing_tf5)
-    adxsellCond5m  := isAdxSell("5", i_dmiLength_tf5, i_dmiSmoothing_tf5)
+// if tf5
+//     dmibuyCond5m   := isDmiBuy("5", i_dmiLength_tf5, i_dmiSmoothing_tf5)
+//     dmisellCond5m  := isDmiSell("5", i_dmiLength_tf5, i_dmiSmoothing_tf5)
+//     adxbuyCond5m   := isAdxBuy("5", i_dmiLength_tf5, i_dmiSmoothing_tf5)
+//     adxsellCond5m  := isAdxSell("5", i_dmiLength_tf5, i_dmiSmoothing_tf5)
 
-// ---- Timeframe: 15 Minutes ----
-var bool dmibuyCond15m = false
-var bool dmisellCond15m = false
-var bool adxbuyCond15m = false
-var bool adxsellCond15m = false
+// // ---- Timeframe: 15 Minutes ----
+// var bool dmibuyCond15m = true
+// var bool dmisellCond15m = true
+// var bool adxbuyCond15m = true
+// var bool adxsellCond15m = true
 
-if tf15
-    dmibuyCond15m   := isDmiBuy("15", i_dmiLength_tf5, i_dmiSmoothing_tf5)
-    dmisellCond15m  := isDmiSell("15", i_dmiLength_tf5, i_dmiSmoothing_tf5)
-    adxbuyCond15m   := isAdxBuy("15", i_dmiLength_tf5, i_dmiSmoothing_tf5)
-    adxsellCond15m  := isAdxSell("15", i_dmiLength_tf5, i_dmiSmoothing_tf5)
+// if tf15
+//     dmibuyCond15m   := isDmiBuy("15", i_dmiLength_tf5, i_dmiSmoothing_tf5)
+//     dmisellCond15m  := isDmiSell("15", i_dmiLength_tf5, i_dmiSmoothing_tf5)
+//     adxbuyCond15m   := isAdxBuy("15", i_dmiLength_tf5, i_dmiSmoothing_tf5)
+//     adxsellCond15m  := isAdxSell("15", i_dmiLength_tf5, i_dmiSmoothing_tf5)
 
-// ---- Timeframe: 30 Minutes ----
-var bool dmibuyCond30m = false
-var bool dmisellCond30m = false
-var bool adxbuyCond30m = false
-var bool adxsellCond30m = false
+// // ---- Timeframe: 30 Minutes ----
+// var bool dmibuyCond30m = true
+// var bool dmisellCond30m = true
+// var bool adxbuyCond30m = true
+// var bool adxsellCond30m = true
 
-if tf30
-    dmibuyCond30m   := isDmiBuy("30", i_dmiLength_tf30, i_dmiSmoothing_tf30)
-    dmisellCond30m  := isDmiSell("30", i_dmiLength_tf30, i_dmiSmoothing_tf30)
-    adxbuyCond30m   := isAdxBuy("30", i_dmiLength_tf30, i_dmiSmoothing_tf30)
-    adxsellCond30m  := isAdxSell("30", i_dmiLength_tf30, i_dmiSmoothing_tf30)
+// if tf30
+//     dmibuyCond30m   := isDmiBuy("30", i_dmiLength_tf30, i_dmiSmoothing_tf30)
+//     dmisellCond30m  := isDmiSell("30", i_dmiLength_tf30, i_dmiSmoothing_tf30)
+//     adxbuyCond30m   := isAdxBuy("30", i_dmiLength_tf30, i_dmiSmoothing_tf30)
+//     adxsellCond30m  := isAdxSell("30", i_dmiLength_tf30, i_dmiSmoothing_tf30)
 
-// ---- Timeframe: 1 Hour ----
-var bool dmibuyCond60m = false
-var bool dmisellCond60m = false
-var bool adxbuyCond60m = false
-var bool adxsellCond60m = false
+// // ---- Timeframe: 1 Hour ----
+// var bool dmibuyCond60m = true
+// var bool dmisellCond60m = true
+// var bool adxbuyCond60m = true
+// var bool adxsellCond60m = true
 
-if tf60
-    dmibuyCond60m   := isDmiBuy("60", i_dmiLength_tf60, i_dmiSmoothing_tf60)
-    dmisellCond60m  := isDmiSell("60", i_dmiLength_tf60, i_dmiSmoothing_tf60)
-    adxbuyCond60m   := isAdxBuy("60", i_dmiLength_tf60, i_dmiSmoothing_tf60)
-    adxsellCond60m  := isAdxSell("60", i_dmiLength_tf60, i_dmiSmoothing_tf60)
+// if tf60
+//     dmibuyCond60m   := isDmiBuy("60", i_dmiLength_tf60, i_dmiSmoothing_tf60)
+//     dmisellCond60m  := isDmiSell("60", i_dmiLength_tf60, i_dmiSmoothing_tf60)
+//     adxbuyCond60m   := isAdxBuy("60", i_dmiLength_tf60, i_dmiSmoothing_tf60)
+//     adxsellCond60m  := isAdxSell("60", i_dmiLength_tf60, i_dmiSmoothing_tf60)
 
-// ---- Timeframe: 4 Hours ----
-var bool dmibuyCond240m = false
-var bool dmisellCond240m = false
-var bool adxbuyCond240m = false
-var bool adxsellCond240m = false
+// // ---- Timeframe: 4 Hours ----
+// var bool dmibuyCond240m = true
+// var bool dmisellCond240m = true
+// var bool adxbuyCond240m = true
+// var bool adxsellCond240m = true
 
-if tf240
-    dmibuyCond240m   := isDmiBuy("240", i_dmiLength_tf240, i_dmiSmoothing_tf240)
-    dmisellCond240m  := isDmiSell("240", i_dmiLength_tf240, i_dmiSmoothing_tf240)
-    adxbuyCond240m   := isAdxBuy("240", i_dmiLength_tf240, i_dmiSmoothing_tf240)
-    adxsellCond240m  := isAdxSell("240", i_dmiLength_tf240, i_dmiSmoothing_tf240)
+// if tf240
+//     dmibuyCond240m   := isDmiBuy("240", i_dmiLength_tf240, i_dmiSmoothing_tf240)
+//     dmisellCond240m  := isDmiSell("240", i_dmiLength_tf240, i_dmiSmoothing_tf240)
+//     adxbuyCond240m   := isAdxBuy("240", i_dmiLength_tf240, i_dmiSmoothing_tf240)
+//     adxsellCond240m  := isAdxSell("240", i_dmiLength_tf240, i_dmiSmoothing_tf240)
 
-// ---- Timeframe: 1 Day ----
-var bool dmibuyCondD = false
-var bool dmisellCondD = false
-var bool adxbuyCondD = false
-var bool adxsellCondD = false
+// // ---- Timeframe: 1 Day ----
+// var bool dmibuyCondD = true
+// var bool dmisellCondD = true
+// var bool adxbuyCondD = true
+// var bool adxsellCondD = true
 
-if tfD
-    dmibuyCondD   := isDmiBuy("D", i_dmiLength_tfD, i_dmiSmoothing_tfD)
-    dmisellCondD  := isDmiSell("D", i_dmiLength_tfD, i_dmiSmoothing_tfD)
-    adxbuyCondD   := isAdxBuy("D", i_dmiLength_tfD, i_dmiSmoothing_tfD)
-    adxsellCondD  := isAdxSell("D", i_dmiLength_tfD, i_dmiSmoothing_tfD)
-    
+// if tfD
+//     dmibuyCondD   := isDmiBuy("D", i_dmiLength_tfD, i_dmiSmoothing_tfD)
+//     dmisellCondD  := isDmiSell("D", i_dmiLength_tfD, i_dmiSmoothing_tfD)
+//     adxbuyCondD   := isAdxBuy("D", i_dmiLength_tfD, i_dmiSmoothing_tfD)
+//     adxsellCondD  := isAdxSell("D", i_dmiLength_tfD, i_dmiSmoothing_tfD)
+
+getDmiAdx(tfStr, enabled, len, smooth) =>
+    var float dip = na
+    var float din = na
+    var float adx = na
+    var dmiBuy = true
+    var dmiSell = true
+    var adxBuy = true
+    var adxSell = true
+
+    if enabled
+        [dip, din, adx] = request.security(syminfo.tickerid, tfStr, dmiWrapper(len, smooth))
+        dmiBuy := not na(dip) and not na(din) and dip > din and dip >= 25
+        dmiSell := not na(dip) and not na(din) and dip < din and din >= 25
+        adxBuy := not na(adx) and dip > din and adx >= 25
+        adxSell := not na(adx) and dip < din and adx >= 25
+
+    [dip, din, adx, dmiBuy, dmiSell, adxBuy, adxSell]
+
+[dip2m, din2m, adx2m, dmibuyCond2m, dmisellCond2m, adxbuyCond2m, adxsellCond2m] = getDmiAdx("2", tf2, i_dmiLength_tf2, i_dmiSmoothing_tf2)
+[dip3m, din3m, adx3m, dmibuyCond3m, dmisellCond3m, adxbuyCond3m, adxsellCond3m] = getDmiAdx("3", tf3, i_dmiLength_tf3, i_dmiSmoothing_tf3)
+[dip5m, din5m, adx5m, dmibuyCond5m, dmisellCond5m, adxbuyCond5m, adxsellCond5m] = getDmiAdx("5", tf5, i_dmiLength_tf5, i_dmiSmoothing_tf5)
+[dip15m, din15m, adx15m, dmibuyCond15m, dmisellCond15m, adxbuyCond15m, adxsellCond15m] = getDmiAdx("15", tf15, i_dmiLength_tf15, i_dmiSmoothing_tf15)
+[dip30m, din30m, adx30m, dmibuyCond30m, dmisellCond30m, adxbuyCond30m, adxsellCond30m] = getDmiAdx("30", tf30, i_dmiLength_tf30, i_dmiSmoothing_tf30)
+[dip60m, din60m, adx60m, dmibuyCond60m, dmisellCond60m, adxbuyCond60m, adxsellCond60m] = getDmiAdx("60", tf60, i_dmiLength_tf60, i_dmiSmoothing_tf60)
+[dip240m, din240m, adx240m, dmibuyCond240m, dmisellCond240m, adxbuyCond240m, adxsellCond240m] = getDmiAdx("240", tf240, i_dmiLength_tf240, i_dmiSmoothing_tf240)
+[dipD, dinD, adxD, dmibuyCondD, dmisellCondD, adxbuyCondD, adxsellCondD] = getDmiAdx("D", tfD, i_dmiLength_tfD, i_dmiSmoothing_tfD)
+
 // ---- Timeframe: Chart timeframe (base conditions) ----
+
 [dip, din, adx] = dmiWrapper(i_dmiLength, i_dmiSmoothing)
-dmibuyCond = conditionType == 'DMI' ? (dip > din and dip >= 25 and dmibuyCond5m and dmibuyCond15m) : true 
-dmisellCond = conditionType == 'DMI' ? (din > dip and din >= 25 and dmisellCond5m and dmisellCond15m) : true
-adxbuyCond = conditionType == 'ADX' ? (dip > din and adx >= 25 and adxbuyCond5m and adxbuyCond15m) : true
-adxsellCond = conditionType == 'ADX' ? (dip < din and adx >= 25 and adxbuyCond5m and adxbuyCond15m) : true
+
+// Final DMI Buy Condition
+dmibuyCond = conditionType != 'DMI' or
+     (dip > din and dip >= 25 and
+     dmibuyCond2m and dmibuyCond3m and dmibuyCond5m and dmibuyCond15m and
+     dmibuyCond30m and dmibuyCond60m and dmibuyCond240m and dmibuyCondD)
+
+// Final DMI Sell Condition
+dmisellCond = conditionType != 'DMI' or
+     (din > dip and din >= 25 and
+     dmisellCond2m and dmisellCond3m and dmisellCond5m and dmisellCond15m and
+     dmisellCond30m and dmisellCond60m and dmisellCond240m and dmisellCondD)
+
+// Final ADX Buy Condition
+adxbuyCond = conditionType != 'ADX' or
+     (dip > din and adx >= 25 and
+     adxbuyCond2m and adxbuyCond3m and adxbuyCond5m and adxbuyCond15m and
+     adxbuyCond30m and adxbuyCond60m and adxbuyCond240m and adxbuyCondD)
+
+// Final ADX Sell Condition
+adxsellCond = conditionType != 'ADX' or
+     (dip < din and adx >= 25 and
+     adxsellCond2m and adxsellCond3m and adxsellCond5m and adxsellCond15m and
+     adxsellCond30m and adxsellCond60m and adxsellCond240m and adxsellCondD)
+
 
 // TASC continuation signal
 barsSinceNewTrend = ta.barssince(isNewTrend) + 1
@@ -250,7 +300,7 @@ trend_sw_low = not na(barsSinceNewTrend) ? ta.lowest(low, barsSinceNewTrend) : n
 TASC_Cont_buyCond = (st > st[1] and dir == -1 and trend_sw_high > trend_sw_high[1]) or not useTASC_CE
 TASC_Cont_sellCond = (st < st[1] and dir == 1 and trend_sw_low < trend_sw_low[1]) or not useTASC_CE
 
-// ===== ENTRY SIGNALS ===== //
+// =============================================================================== ENTRY SIGNALS ====================================================================================== //
 // Existing signal definitions
 buySignal = (TASCbuyCondition or TASC_Cont_buyCond) and dmibuyCond and adxbuyCond and 
      can_trade_today and time_sess_good and strategy.position_size == 0
@@ -346,16 +396,16 @@ plot(strategy.position_size < 0 ? shortTarget2 : na, color=color.green, style=pl
 
 // Debugging
 plotchar(dip, 'dip', " ", color = color.green)
-// plotchar(dip5m, 'dip5m', " ", color = color.green)
-// plotchar(dip15m, 'dip15m', " ", color = color.green)
+plotchar(dip5m, 'dip5m', " ", color = color.green)
+plotchar(dip15m, 'dip15m', " ", color = color.green)
 
 plotchar(din, 'din', " ", color = color.red)
-// plotchar(din5m, 'din5m', " ", color =  color.red)
-// plotchar(din15m, 'din15m', " ", color =  color.red)
+plotchar(din5m, 'din5m', " ", color =  color.red)
+plotchar(din15m, 'din15m', " ", color =  color.red)
 
 plotchar(adx, 'adx', " ", color = color.blue)
-// plotchar(adx5m, 'adx5m', " ", color =  color.blue)
-// plotchar(adx15m, 'adx15m', " ", color =  color.blue)
+plotchar(adx5m, 'adx5m', " ", color =  color.blue)
+plotchar(adx15m, 'adx15m', " ", color =  color.blue)
 
 plotchar(dmibuyCond ? 1 : 0, 'DMI buy Condition', " ", color = color.green)
 plotchar(dmisellCond ? 1 : 0, 'DMI sell Condition', " ", color = color.green)
@@ -367,9 +417,11 @@ plotchar(adxsellCond ? 1 : 0, 'ADX sell Condition', " ", color = color.blue)
 // plot(close, "close")
 plotchar(trend_sw_high, 'Current trend high', " ")
 
-plotshape(TASC_Cont_buyCond, title="Cont. Signal", text="Cont. Sig.",
-  style=shape.labeldown, location=location.abovebar, 
-  color=color.new(color.green, 0), textcolor=color.white, size=size.small)
+show_TASC_CE = true ? useTASC_CE and TASC_Cont_buyCond : false
+
+plotshape(show_TASC_CE, title="Cont. Signal", text="Cont. Sig.",
+ style=shape.labeldown, location=location.abovebar, 
+ color=color.new(color.green, 0), textcolor=color.white, size=size.small)
 
 // ===== CREATE DMI/ADX DISPLAY TABLE ===== //
 // var table dmiTable = table.new(position.top_right, 5, 4, border_width=1, bgcolor=color.rgb(33, 40, 48))
