@@ -2,17 +2,19 @@
 // © pidepython / https://www.fiverr.com/alighazanfer59/build-algotrading-backtesting-screening-data-tools
 
 //@version=6
-strategy("DMI Trintiy Strategy", overlay=true, default_qty_type=strategy.fixed, default_qty_value=2)
+strategy("DMI Trintiy Strategy v2", overlay=true, default_qty_type=strategy.fixed, default_qty_value=2)
 
 //========== PHASE 1: CORE FRAMEWORK ==========//
 //--- 3. Indicator Parameters ---//
-i_dmiLength = input.int(9, "Length", minval=1, group="DMI/ADX Settings", tooltip = "Indicator Settings on chart timeframe")
-i_dmiSmoothing = input.int(9, "Welders's Avg.", minval=1, group="DMI/ADX Settings", tooltip = "Indicator Settings on chart timeframe")
-i_dmiThreshold = input.int(25, "DMI/ ADX Threshold.", minval=1, group="DMI/ADX Settings", tooltip = "Threshold value of DMI or ADX to trigger entry conditions")
+i_dmiThreshold = input.int(25, "DMI Threshold.", minval=1, group="DMI/ADX Settings", tooltip = "Threshold value of DMI to trigger entry conditions")
+i_adxThreshold = input.int(25, "ADX Threshold.", minval=1, group="DMI/ADX Settings", tooltip = "Threshold value of ADX to trigger entry conditions")
 i_atrLength = input.int(10, "ATR Length", minval=1, group = "TASC Indicator Settings", tooltip = "TASC supertrend Calculation, a lower value will make the system more sensitive to trend reversal")
 i_mult = input.float(3.0, "Multiplier", minval=0.1, step=0.1, group = "TASC Indicator Settings", tooltip = "TASC supertrend Calculation, a lower value will make the system more sensitive to trend reversal")
 
 //--- 1. Timeframe Selection ---//
+tf1 = input.bool(true, "1 Minutes:     ", group="Timeframe Selection", inline="1", display = display.none)
+i_dmiLength_tf1 = input.int(9, "Length", minval=1, group="Timeframe Selection", inline = "1")
+i_dmiSmoothing_tf1 = input.int(9, "W. Avg.", minval=1, group="Timeframe Selection", inline = "1")
 tf2 = input.bool(false, "2 Minutes:     ", group="Timeframe Selection", inline="1", display = display.none)
 i_dmiLength_tf2 = input.int(14, "Length", minval=1, group="Timeframe Selection", inline = "1")
 i_dmiSmoothing_tf2 = input.int(14, "W. Avg.", minval=1, group="Timeframe Selection", inline = "1")
@@ -125,11 +127,12 @@ getDmiAdx(tfStr, enabled, len, smooth) =>
         [dip, din, adx] = request.security(syminfo.tickerid, tfStr, dmiWrapper(len, smooth))
         dmiBuy := not na(dip) and not na(din) and dip > din and dip >= i_dmiThreshold
         dmiSell := not na(dip) and not na(din) and dip < din and din >= i_dmiThreshold
-        adxBuy := not na(adx) and dip > din and adx >= i_dmiThreshold
-        adxSell := not na(adx) and dip < din and adx >= i_dmiThreshold
+        adxBuy := not na(adx) and dip > din and adx >= i_adxThreshold
+        adxSell := not na(adx) and dip < din and adx >= i_adxThreshold
 
     [dip, din, adx, dmiBuy, dmiSell, adxBuy, adxSell]
 
+[dip1m, din1m, adx1m, dmibuyCond1m, dmisellCond1m, adxbuyCond1m, adxsellCond1m] = getDmiAdx("1", tf1, i_dmiLength_tf1, i_dmiSmoothing_tf1)
 [dip2m, din2m, adx2m, dmibuyCond2m, dmisellCond2m, adxbuyCond2m, adxsellCond2m] = getDmiAdx("2", tf2, i_dmiLength_tf2, i_dmiSmoothing_tf2)
 [dip3m, din3m, adx3m, dmibuyCond3m, dmisellCond3m, adxbuyCond3m, adxsellCond3m] = getDmiAdx("3", tf3, i_dmiLength_tf3, i_dmiSmoothing_tf3)
 [dip5m, din5m, adx5m, dmibuyCond5m, dmisellCond5m, adxbuyCond5m, adxsellCond5m] = getDmiAdx("5", tf5, i_dmiLength_tf5, i_dmiSmoothing_tf5)
@@ -139,32 +142,27 @@ getDmiAdx(tfStr, enabled, len, smooth) =>
 [dip240m, din240m, adx240m, dmibuyCond240m, dmisellCond240m, adxbuyCond240m, adxsellCond240m] = getDmiAdx("240", tf240, i_dmiLength_tf240, i_dmiSmoothing_tf240)
 [dipD, dinD, adxD, dmibuyCondD, dmisellCondD, adxbuyCondD, adxsellCondD] = getDmiAdx("D", tfD, i_dmiLength_tfD, i_dmiSmoothing_tfD)
 
-// ---- Timeframe: Chart timeframe (base conditions) ----
-
-[dip, din, adx] = dmiWrapper(i_dmiLength, i_dmiSmoothing)
-
 // Final DMI Buy Condition
-dmibuyCond = conditionType != 'DMI' or
-     (dip > din and dip >= i_dmiThreshold and
-     dmibuyCond2m and dmibuyCond3m and dmibuyCond5m and dmibuyCond15m and
-     dmibuyCond30m and dmibuyCond60m and dmibuyCond240m and dmibuyCondD)
+var bool dmibuyCond = false
+dmibuyCond := conditionType != 'DMI' or
+     (dmibuyCond1m and dmibuyCond2m and dmibuyCond3m and dmibuyCond5m and dmibuyCond15m and
+     dmibuyCond30m and dmibuyCond60m and dmibuyCond240m and dmibuyCondD and not dmibuyCond[1])
 
 // Final DMI Sell Condition
-dmisellCond = conditionType != 'DMI' or
-     (din > dip and din >= i_dmiThreshold and
-     dmisellCond2m and dmisellCond3m and dmisellCond5m and dmisellCond15m and
-     dmisellCond30m and dmisellCond60m and dmisellCond240m and dmisellCondD)
+var bool dmisellCond = false
+dmisellCond := conditionType != 'DMI' or
+     (dmisellCond1m and dmisellCond2m and dmisellCond3m and dmisellCond5m and dmisellCond15m and
+     dmisellCond30m and dmisellCond60m and dmisellCond240m and dmisellCondD and not dmisellCond[1])
 
 // Final ADX Buy Condition
-adxbuyCond = conditionType != 'ADX' or
-     (dip > din and adx >= i_dmiThreshold and
-     adxbuyCond2m and adxbuyCond3m and adxbuyCond5m and adxbuyCond15m and
+var bool adxbuyCond = false
+adxbuyCond := conditionType != 'ADX' or
+     (adxbuyCond1m and adxbuyCond2m and adxbuyCond3m and adxbuyCond5m and adxbuyCond15m and
      adxbuyCond30m and adxbuyCond60m and adxbuyCond240m and adxbuyCondD)
 
 // Final ADX Sell Condition
 adxsellCond = conditionType != 'ADX' or
-     (dip < din and adx >= i_dmiThreshold and
-     adxsellCond2m and adxsellCond3m and adxsellCond5m and adxsellCond15m and
+     (adxsellCond1m and adxsellCond2m and adxsellCond3m and adxsellCond5m and adxsellCond15m and
      adxsellCond30m and adxsellCond60m and adxsellCond240m and adxsellCondD)
 
 
@@ -273,7 +271,7 @@ plot(strategy.position_size < 0 ? shortTarget2 : na, color=color.green, style=pl
 // Debugging
 // var float dip5 = na, float din5 = na, float adx5 = na
 // var float dip15 = na, float din15 = na, float adx15 = na
-
+[dip, din, adx] = request.security(syminfo.tickerid, "1", dmiWrapper(i_dmiLength_tf1, i_dmiSmoothing_tf1))
 [dip5, din5, adx5] = request.security(syminfo.tickerid, "5", dmiWrapper(i_dmiLength_tf5, i_dmiSmoothing_tf5))
 [dip15, din15, adx15] = request.security(syminfo.tickerid, "15", dmiWrapper(i_dmiLength_tf15, i_dmiSmoothing_tf15))
 
@@ -296,7 +294,8 @@ plotchar(tascSignal, 'TASC Entry Signal', "", color = tascSignal == 1 ? color.gr
 adxSignal = conditionType == 'ADX' ? (adxbuyCond ? 1 : adxsellCond ? -1 : na) : na
 plotchar(adxSignal, 'ADX Signal', "", color = adxSignal == 1 ? color.green : adxSignal == -1 ? color.red : na)
 
-// plotchar(trend_sw_high, 'Current trend high', " ")
+plotchar(dmibuyCond, 'dmibuyCond', " ")
+plotchar(dmibuyCond[1], 'dmibuyCond[1]', " ")
 
 // --- Buy Continuation Signal ---
 show_TASC_CE_buy = useTASC_CE and TASC_Cont_buyCond
@@ -311,85 +310,85 @@ plotshape(show_TASC_CE_sell, title="TASC Cont. Sell Signal", text="Cont. Sell",
      color=color.new(color.red, 0), textcolor=color.white, size=size.small)
 
 
-// ===== CREATE DMI/ADX DISPLAY TABLE ===== //
-var table dmiTable = table.new(position.top_right, 5, 4, border_width=1, bgcolor=color.rgb(33, 40, 48))
+// // ===== CREATE DMI/ADX DISPLAY TABLE ===== //
+// var table dmiTable = table.new(position.top_right, 5, 4, border_width=1, bgcolor=color.rgb(33, 40, 48))
 
-// Initialize table on first bar
-if barstate.isfirst
-    // Headers
-    table.cell(dmiTable, 0, 0, "TF", bgcolor=color.gray, text_color=color.white)
-    table.cell(dmiTable, 1, 0, "+DI", bgcolor=color.gray, text_color=color.white)
-    table.cell(dmiTable, 2, 0, "-DI", bgcolor=color.gray, text_color=color.white)
-    table.cell(dmiTable, 3, 0, "ADX", bgcolor=color.gray, text_color=color.white)
-    table.cell(dmiTable, 4, 0, "Signal", bgcolor=color.gray, text_color=color.white)
+// // Initialize table on first bar
+// if barstate.isfirst
+//     // Headers
+//     table.cell(dmiTable, 0, 0, "TF", bgcolor=color.gray, text_color=color.white)
+//     table.cell(dmiTable, 1, 0, "+DI", bgcolor=color.gray, text_color=color.white)
+//     table.cell(dmiTable, 2, 0, "-DI", bgcolor=color.gray, text_color=color.white)
+//     table.cell(dmiTable, 3, 0, "ADX", bgcolor=color.gray, text_color=color.white)
+//     table.cell(dmiTable, 4, 0, "Signal", bgcolor=color.gray, text_color=color.white)
     
-    // Initialize all cells (required for updates)
-    for row = 1 to 3
-        table.cell(dmiTable, 0, row, "")
-        table.cell(dmiTable, 1, row, "")
-        table.cell(dmiTable, 2, row, "")
-        table.cell(dmiTable, 3, row, "")
-        table.cell(dmiTable, 4, row, "")
+//     // Initialize all cells (required for updates)
+//     for row = 1 to 3
+//         table.cell(dmiTable, 0, row, "")
+//         table.cell(dmiTable, 1, row, "")
+//         table.cell(dmiTable, 2, row, "")
+//         table.cell(dmiTable, 3, row, "")
+//         table.cell(dmiTable, 4, row, "")
 
-// Update DMI values for 1m timeframe
-table.cell_set_text(dmiTable, 0, 1, "1m")
-table.cell_set_text(dmiTable, 1, 1, str.tostring(dip, "#.##"))
-table.cell_set_text(dmiTable, 2, 1, str.tostring(din, "#.##"))
-table.cell_set_text(dmiTable, 3, 1, str.tostring(adx, "#.##"))
+// // Update DMI values for 1m timeframe
+// table.cell_set_text(dmiTable, 0, 1, "1m")
+// table.cell_set_text(dmiTable, 1, 1, str.tostring(dip, "#.##"))
+// table.cell_set_text(dmiTable, 2, 1, str.tostring(din, "#.##"))
+// table.cell_set_text(dmiTable, 3, 1, str.tostring(adx, "#.##"))
 
-// Color coding for +DI/-DI
-plusDIcolor = dip >= din ? color.lime : color.silver
-minusDIcolor = din > dip ? color.red : color.silver
-adxColor = adx >= 25 ? color.orange : color.silver
+// // Color coding for +DI/-DI
+// plusDIcolor = dip >= din ? color.lime : color.silver
+// minusDIcolor = din > dip ? color.red : color.silver
+// adxColor = adx >= 25 ? color.orange : color.silver
 
-table.cell_set_text_color(dmiTable, 1, 1, plusDIcolor)
-table.cell_set_text_color(dmiTable, 2, 1, minusDIcolor)
-table.cell_set_text_color(dmiTable, 3, 1, adxColor)
+// table.cell_set_text_color(dmiTable, 1, 1, plusDIcolor)
+// table.cell_set_text_color(dmiTable, 2, 1, minusDIcolor)
+// table.cell_set_text_color(dmiTable, 3, 1, adxColor)
 
-signal = 
-  dip >= 25 and dip > din ? "Bull" : 
-  din >= 25 and din > dip ? "Bear" : "Neutral"
-table.cell_set_text(dmiTable, 4, 1, signal)
-table.cell_set_text_color(dmiTable, 4, 1, signal == "Bull" ? color.lime : signal == "Bear" ? color.red : color.gray)
+// signal = 
+//   dip >= 25 and dip > din ? "Bull" : 
+//   din >= 25 and din > dip ? "Bear" : "Neutral"
+// table.cell_set_text(dmiTable, 4, 1, signal)
+// table.cell_set_text_color(dmiTable, 4, 1, signal == "Bull" ? color.lime : signal == "Bear" ? color.red : color.gray)
 
-// Update DMI values for 5m timeframe
-table.cell_set_text(dmiTable, 0, 2, "5m")
-table.cell_set_text(dmiTable, 1, 2, str.tostring(dip5, "#.##"))
-table.cell_set_text(dmiTable, 2, 2, str.tostring(din5, "#.##"))
-table.cell_set_text(dmiTable, 3, 2, str.tostring(adx5, "#.##"))
+// // Update DMI values for 5m timeframe
+// table.cell_set_text(dmiTable, 0, 2, "5m")
+// table.cell_set_text(dmiTable, 1, 2, str.tostring(dip5, "#.##"))
+// table.cell_set_text(dmiTable, 2, 2, str.tostring(din5, "#.##"))
+// table.cell_set_text(dmiTable, 3, 2, str.tostring(adx5, "#.##"))
 
-plusDIcolor5 = dip5 >= din5 ? color.lime : color.silver
-minusDIcolor5 = din5 >= dip5 ? color.red : color.silver
-adxColor5 = adx5 >= 25 ? color.orange : color.silver
+// plusDIcolor5 = dip5 >= din5 ? color.lime : color.silver
+// minusDIcolor5 = din5 >= dip5 ? color.red : color.silver
+// adxColor5 = adx5 >= 25 ? color.orange : color.silver
 
-table.cell_set_text_color(dmiTable, 1, 2, plusDIcolor5)
-table.cell_set_text_color(dmiTable, 2, 2, minusDIcolor5)
-table.cell_set_text_color(dmiTable, 3, 2, adxColor5)
+// table.cell_set_text_color(dmiTable, 1, 2, plusDIcolor5)
+// table.cell_set_text_color(dmiTable, 2, 2, minusDIcolor5)
+// table.cell_set_text_color(dmiTable, 3, 2, adxColor5)
 
-signal5 = 
-  dip5 >= 25 and dip5 > din5 ? "Bull" : 
-  din5 >= 25 and din5 > dip5 ? "Bear" : "Neutral"
-table.cell_set_text(dmiTable, 4, 2, signal5)
-table.cell_set_text_color(dmiTable, 4, 2, signal5 == "Bull" ? color.lime : signal5 == "Bear" ? color.red : color.gray)
+// signal5 = 
+//   dip5 >= 25 and dip5 > din5 ? "Bull" : 
+//   din5 >= 25 and din5 > dip5 ? "Bear" : "Neutral"
+// table.cell_set_text(dmiTable, 4, 2, signal5)
+// table.cell_set_text_color(dmiTable, 4, 2, signal5 == "Bull" ? color.lime : signal5 == "Bear" ? color.red : color.gray)
 
-// Update DMI values for 15m timeframe
-table.cell_set_text(dmiTable, 0, 3, "15m")
-table.cell_set_text(dmiTable, 1, 3, str.tostring(dip15, "#.##"))
-table.cell_set_text(dmiTable, 2, 3, str.tostring(din15, "#.##"))
-table.cell_set_text(dmiTable, 3, 3, str.tostring(adx15, "#.##"))
+// // Update DMI values for 15m timeframe
+// table.cell_set_text(dmiTable, 0, 3, "15m")
+// table.cell_set_text(dmiTable, 1, 3, str.tostring(dip15, "#.##"))
+// table.cell_set_text(dmiTable, 2, 3, str.tostring(din15, "#.##"))
+// table.cell_set_text(dmiTable, 3, 3, str.tostring(adx15, "#.##"))
 
-// Color coding for +DI/-DI
-plusDIcolor15 = dip15 >= din15 ? color.lime : color.silver
-minusDIcolor15 = din15 > dip15 ? color.red : color.silver
-adxColor15 = adx15 >= 25 ? color.orange : color.silver
+// // Color coding for +DI/-DI
+// plusDIcolor15 = dip15 >= din15 ? color.lime : color.silver
+// minusDIcolor15 = din15 > dip15 ? color.red : color.silver
+// adxColor15 = adx15 >= 25 ? color.orange : color.silver
 
-table.cell_set_text_color(dmiTable, 1, 3, plusDIcolor15)
-table.cell_set_text_color(dmiTable, 2, 3, minusDIcolor15)
-table.cell_set_text_color(dmiTable, 3, 3, adxColor15)
+// table.cell_set_text_color(dmiTable, 1, 3, plusDIcolor15)
+// table.cell_set_text_color(dmiTable, 2, 3, minusDIcolor15)
+// table.cell_set_text_color(dmiTable, 3, 3, adxColor15)
 
-// Signal status for 15m
-signal15 = 
-  dip15 >= 25 and dip15 > din15 ? "Bull" : 
-  din15 >= 25 and din15 > dip15 ? "Bear" : "Neutral"
-table.cell_set_text(dmiTable, 4, 3, signal15)
-table.cell_set_text_color(dmiTable, 4, 3, signal15 == "Bull" ? color.lime : signal15 == "Bear" ? color.red : color.gray)
+// // Signal status for 15m
+// signal15 = 
+//   dip15 >= 25 and dip15 > din15 ? "Bull" : 
+//   din15 >= 25 and din15 > dip15 ? "Bear" : "Neutral"
+// table.cell_set_text(dmiTable, 4, 3, signal15)
+// table.cell_set_text_color(dmiTable, 4, 3, signal15 == "Bull" ? color.lime : signal15 == "Bear" ? color.red : color.gray)
