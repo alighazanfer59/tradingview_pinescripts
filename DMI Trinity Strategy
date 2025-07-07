@@ -45,8 +45,9 @@ i_dmiSmoothing_tfD = input.int(14, "W.Avg.", minval=1, group="Timeframe Selectio
 conditionType = input.string("DMI", "Condition Type", options=["DMI", "ADX"], group="Strategy Settings")
 
 //--- 4. Trigger Conditions ---//
-useTASC_SE = input.bool(false, "TASC Entry Signal", group="Trigger Settings")
-useTASC_CE = input.bool(false, "TASC Continuation", group="Trigger Settings")
+useTASC_SE = input.bool(false, "TASC Change of Structure entry signal", group="Trigger Settings")
+useTASC_CE = input.bool(false, " TASC trend continuation entry signal", group="Trigger Settings")
+useDMI = input.bool(false, "1-minute DMI alignment entry signal", group="Trigger Settings")
 
 //--- 5. Trading Session ---//
 in_time_sess_en = input.bool(true, "Limit trading hours?", group = "Time Settings")
@@ -103,8 +104,8 @@ plot(dir < 0 ? st : na, "Up direction", color = color.green, style=plot.style_st
 plot(dir > 0 ? st : na, "Down direction", color = color.red, style=plot.style_steplinebr, linewidth = 4)
 
 // Trading signals
-bool TASCbuyCondition = useTASC_SE ? isNewTrend and dir == -1 : true
-bool TASCsellConditon = useTASC_SE ? isNewTrend and dir == 1 : true
+bool TASCbuyCondition = useTASC_SE and (isNewTrend and dir == -1)
+bool TASCsellConditon = useTASC_SE and (isNewTrend and dir == 1)
 
 // ===== PHASE 2: MTF DMI/ADX LOGIC ===== //
 // Initialize condition arrays
@@ -144,24 +145,24 @@ getDmiAdx(tfStr, enabled, len, smooth) =>
 
 // Final DMI Buy Condition
 var bool dmibuyCond = false
-dmibuyCond := conditionType != 'DMI' or
+dmibuyCond := conditionType == 'DMI' and useDMI and
      (dmibuyCond1m and dmibuyCond2m and dmibuyCond3m and dmibuyCond5m and dmibuyCond15m and
      dmibuyCond30m and dmibuyCond60m and dmibuyCond240m and dmibuyCondD and not dmibuyCond[1])
 
 // Final DMI Sell Condition
 var bool dmisellCond = false
-dmisellCond := conditionType != 'DMI' or
+dmisellCond := conditionType == 'DMI' and useDMI and
      (dmisellCond1m and dmisellCond2m and dmisellCond3m and dmisellCond5m and dmisellCond15m and
      dmisellCond30m and dmisellCond60m and dmisellCond240m and dmisellCondD and not dmisellCond[1])
 
 // Final ADX Buy Condition
 var bool adxbuyCond = false
-adxbuyCond := conditionType != 'ADX' or
+adxbuyCond := conditionType == 'ADX' and useDMI and
      (adxbuyCond1m and adxbuyCond2m and adxbuyCond3m and adxbuyCond5m and adxbuyCond15m and
      adxbuyCond30m and adxbuyCond60m and adxbuyCond240m and adxbuyCondD)
 
 // Final ADX Sell Condition
-adxsellCond = conditionType != 'ADX' or
+adxsellCond = conditionType == 'ADX' and useDMI and
      (adxsellCond1m and adxsellCond2m and adxsellCond3m and adxsellCond5m and adxsellCond15m and
      adxsellCond30m and adxsellCond60m and adxsellCond240m and adxsellCondD)
 
@@ -171,15 +172,15 @@ barsSinceNewTrend = ta.barssince(isNewTrend) + 1
 trend_sw_high = not na(barsSinceNewTrend) ? ta.highest(high, barsSinceNewTrend) : na
 trend_sw_low = not na(barsSinceNewTrend) ? ta.lowest(low, barsSinceNewTrend) : na
 
-TASC_Cont_buyCond = (st > st[1] and dir == -1 and trend_sw_high > trend_sw_high[1]) or not useTASC_CE
-TASC_Cont_sellCond = (st < st[1] and dir == 1 and trend_sw_low < trend_sw_low[1]) or not useTASC_CE
+TASC_Cont_buyCond = (st > st[1] and dir == -1 and trend_sw_high > trend_sw_high[1]) and useTASC_CE
+TASC_Cont_sellCond = (st < st[1] and dir == 1 and trend_sw_low < trend_sw_low[1]) and useTASC_CE
 
 // =============================================================================== ENTRY SIGNALS ====================================================================================== //
 // Existing signal definitions
-buySignal = (TASCbuyCondition or TASC_Cont_buyCond) and dmibuyCond and adxbuyCond and 
+buySignal = (TASCbuyCondition or TASC_Cont_buyCond or dmibuyCond or adxbuyCond) and 
      can_trade_today and time_sess_good and strategy.position_size == 0
      
-sellSignal = (TASCsellConditon or TASC_Cont_sellCond) and dmisellCond and adxsellCond and
+sellSignal = (TASCsellConditon or TASC_Cont_sellCond or dmisellCond or adxsellCond) and
      can_trade_today and time_sess_good and strategy.position_size == 0
 
 // Save stops & targets
@@ -298,13 +299,13 @@ plotchar(dmibuyCond, 'dmibuyCond', " ")
 plotchar(dmibuyCond[1], 'dmibuyCond[1]', " ")
 
 // --- Buy Continuation Signal ---
-show_TASC_CE_buy = useTASC_CE and TASC_Cont_buyCond
+show_TASC_CE_buy = useTASC_CE and TASC_Cont_buyCond and strategy.position_size == 0 and time_sess_good
 plotshape(show_TASC_CE_buy, title="TASC Cont. Buy Signal", text="Cont. Buy",
      style=shape.labeldown, location=location.abovebar,
      color=color.new(color.green, 0), textcolor=color.white, size=size.small)
 
 // --- Sell Continuation Signal ---
-show_TASC_CE_sell = useTASC_CE and TASC_Cont_sellCond
+show_TASC_CE_sell = useTASC_CE and TASC_Cont_sellCond and strategy.position_size == 0 and time_sess_good
 plotshape(show_TASC_CE_sell, title="TASC Cont. Sell Signal", text="Cont. Sell",
      style=shape.labelup, location=location.belowbar,
      color=color.new(color.red, 0), textcolor=color.white, size=size.small)
