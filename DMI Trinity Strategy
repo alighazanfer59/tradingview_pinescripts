@@ -15,31 +15,31 @@ i_mult = input.float(3.0, "Multiplier", minval=0.1, step=0.1, group = "TASC Indi
 tf1 = input.bool(false, "1 Minutes:     ", group="Timeframe Selection", inline="1", display = display.none)
 i_dmiLength_tf1 = input.int(9, "Length", minval=1, group="Timeframe Selection", inline = "1")
 // i_dmiSmoothing_tf1 = input.int(9, "W. Avg.", minval=1, group="Timeframe Selection", inline = "1")
-tf2 = input.bool(false, "2 Minutes:     ", group="Timeframe Selection", inline="1", display = display.none)
-i_dmiLength_tf2 = input.int(14, "Length", minval=1, group="Timeframe Selection", inline = "1")
+tf2 = input.bool(false, "2 Minutes:     ", group="Timeframe Selection", inline="2", display = display.none)
+i_dmiLength_tf2 = input.int(14, "Length", minval=1, group="Timeframe Selection", inline = "2")
 // i_dmiSmoothing_tf2 = input.int(14, "W. Avg.", minval=1, group="Timeframe Selection", inline = "1")
-tf3 = input.bool(false, "3 Minutes:     ", group="Timeframe Selection", inline="2", display = display.none)
-i_dmiLength_tf3 = input.int(14, "Length", minval=1, group="Timeframe Selection", inline = "2")
+tf3 = input.bool(false, "3 Minutes:     ", group="Timeframe Selection", inline="3", display = display.none)
+i_dmiLength_tf3 = input.int(14, "Length", minval=1, group="Timeframe Selection", inline = "3")
 // i_dmiSmoothing_tf3 = input.int(14, "W.Avg.", minval=1, group="Timeframe Selection", inline = "2")
-tf5 = input.bool(false, "5 Minutes:      ", group="Timeframe Selection", inline="3", display = display.none)
-i_dmiLength_tf5 = input.int(14, "Length", minval=1, group="Timeframe Selection", inline = "3")
+tf5 = input.bool(false, "5 Minutes:      ", group="Timeframe Selection", inline="4", display = display.none)
+i_dmiLength_tf5 = input.int(14, "Length", minval=1, group="Timeframe Selection", inline = "4")
 // i_dmiSmoothing_tf5 = input.int(14, "W.Avg.", minval=1, group="Timeframe Selection", inline = "3")
-tf15 = input.bool(false, "15 Minutes:        ", group="Timeframe Selection", inline="4", display = display.none)
-i_dmiLength_tf15 = input.int(14, "Length", minval=1, group="Timeframe Selection", inline = "4")
+tf15 = input.bool(false, "15 Minutes:        ", group="Timeframe Selection", inline="5", display = display.none)
+i_dmiLength_tf15 = input.int(14, "Length", minval=1, group="Timeframe Selection", inline = "5")
 // i_dmiSmoothing_tf15 = input.int(14, "W.Avg.", minval=1, group="Timeframe Selection", inline = "4")
-tf30 = input.bool(false, "30 Minutes:       ", group="Timeframe Selection", inline="5", display = display.none)
-i_dmiLength_tf30 = input.int(14, "Length", minval=1, group="Timeframe Selection", inline = "5")
+tf30 = input.bool(false, "30 Minutes:       ", group="Timeframe Selection", inline="6", display = display.none)
+i_dmiLength_tf30 = input.int(14, "Length", minval=1, group="Timeframe Selection", inline = "6")
 // i_dmiSmoothing_tf30 = input.int(14, "W.Avg.", minval=1, group="Timeframe Selection", inline = "5")
-tf60 = input.bool(false, "1 Hour:       ", group="Timeframe Selection", inline="6", display = display.none)
-i_dmiLength_tf60 = input.int(14, "Length", minval=1, group="Timeframe Selection", inline = "6")
+tf60 = input.bool(false, "1 Hour:       ", group="Timeframe Selection", inline="7", display = display.none)
+i_dmiLength_tf60 = input.int(14, "Length", minval=1, group="Timeframe Selection", inline = "7")
 // i_dmiSmoothing_tf60 = input.int(14, "W.Avg.", minval=1, group="Timeframe Selection", inline = "6")
-tf240 = input.bool(false, "4 Hours:     ", group="Timeframe Selection", inline="7", display = display.none)
-i_dmiLength_tf240 = input.int(14, "Length", minval=1, group="Timeframe Selection", inline = "7")
+tf240 = input.bool(false, "4 Hours:     ", group="Timeframe Selection", inline="8", display = display.none)
+i_dmiLength_tf240 = input.int(14, "Length", minval=1, group="Timeframe Selection", inline = "8")
 // i_dmiSmoothing_tf240 = input.int(14, "W.Avg.", minval=1, group="Timeframe Selection", inline = "7")
-tfD = input.bool(false, "Daily:     ", group="Timeframe Selection", inline="8", display = display.none)
-i_dmiLength_tfD = input.int(14, "Length", minval=1, group="Timeframe Selection", inline = "8")
+tfD = input.bool(false, "Daily:     ", group="Timeframe Selection", inline="9", display = display.none)
+i_dmiLength_tfD = input.int(14, "Length", minval=1, group="Timeframe Selection", inline = "9")
 // i_dmiSmoothing_tfD = input.int(14, "W.Avg.", minval=1, group="Timeframe Selection", inline = "8")
-
+bool anyTFSelected = tf1 or tf2 or tf3 or tf5 or tf15 or tf30 or tf60 or tf240 or tfD
 
 //--- 2. Condition Type Selection ---//
 conditionType = input.string("DMI", "Condition Type", options=["DMI", "ADX"], group="Strategy Settings")
@@ -52,7 +52,7 @@ useDMI = input.bool(false, "1-minute DMI alignment entry signal", group="Trigger
 //--- 5. Trading Session ---//
 in_time_sess_en = input.bool(true, "Limit trading hours?", group = "Time Settings")
 in_time_sess = input.session("0930-1600", "Session hours", group = "Time Settings")
-t = time(timeframe.period, in_time_sess)
+t = time(timeframe.period, in_time_sess, "US/Eastern")
 time_sess_good = in_time_sess_en ? time == t : true
 bgcolor((time == t and  in_time_sess_en) ? color.rgb(167, 175, 167) : na)
 
@@ -100,8 +100,8 @@ int   length = i_atrLength  // (reuse the i_atrLength input)
 var bool isNewTrend = false
 isNewTrend := ta.change(dir) != 0
 
-plot(dir < 0 ? st : na, "Up direction", color = color.green, style=plot.style_steplinebr, linewidth = 4)
-plot(dir > 0 ? st : na, "Down direction", color = color.red, style=plot.style_steplinebr, linewidth = 4)
+plot(dir < 0 and (useTASC_SE or useTASC_CE) ? st : na, "Up direction", color = color.green, style=plot.style_steplinebr, linewidth = 4)
+plot(dir > 0 and (useTASC_SE or useTASC_CE) ? st : na, "Down direction", color = color.red, style=plot.style_steplinebr, linewidth = 4)
 
 // Trading signals
 bool TASCbuyCondition = useTASC_SE and (isNewTrend and dir == -1)
@@ -191,24 +191,29 @@ getDmiAdx(tfStr, enabled, len) =>
 
 // Final DMI Buy Condition
 var bool dmibuyCond = false
-dmibuyCond := conditionType == 'DMI' and useDMI and
+dmibuyCond := conditionType == 'DMI' and useDMI and anyTFSelected and strategy.position_size == 0 and 
      (dmibuyCond1m and dmibuyCond2m and dmibuyCond3m and dmibuyCond5m and dmibuyCond15m and
-     dmibuyCond30m and dmibuyCond60m and dmibuyCond240m and dmibuyCondD and not dmibuyCond[1])
+     dmibuyCond30m and dmibuyCond60m and dmibuyCond240m and dmibuyCondD) and 
+     ((not dmibuyCond1m[1] and tf1) or (not dmibuyCond2m[1] and tf2) or (not dmibuyCond3m[1] and tf3) or
+     (not dmibuyCond5m[1] and tf5) or (not dmibuyCond15m[1] and tf15) or (not dmibuyCond30m[1] and tf30))
 
 // Final DMI Sell Condition
 var bool dmisellCond = false
-dmisellCond := conditionType == 'DMI' and useDMI and
+dmisellCond := conditionType == 'DMI' and useDMI and anyTFSelected and strategy.position_size == 0 and 
      (dmisellCond1m and dmisellCond2m and dmisellCond3m and dmisellCond5m and dmisellCond15m and
-     dmisellCond30m and dmisellCond60m and dmisellCond240m and dmisellCondD and not dmisellCond[1])
+     dmisellCond30m and dmisellCond60m and dmisellCond240m and dmisellCondD) and 
+     ((not dmisellCond1m[1] and tf1) or (not dmisellCond2m[1] and tf2) or (not dmisellCond3m[1] and tf3) or
+     (not dmisellCond5m[1] and tf5) or (not dmisellCond15m[1] and tf15) or (not dmisellCond30m[1] and tf30))
 
 // Final ADX Buy Condition
 var bool adxbuyCond = false
-adxbuyCond := conditionType == 'ADX' and useDMI and
+adxbuyCond := conditionType == 'ADX' and useDMI and anyTFSelected and strategy.position_size == 0 and 
      (adxbuyCond1m and adxbuyCond2m and adxbuyCond3m and adxbuyCond5m and adxbuyCond15m and
      adxbuyCond30m and adxbuyCond60m and adxbuyCond240m and adxbuyCondD)
 
 // Final ADX Sell Condition
-adxsellCond = conditionType == 'ADX' and useDMI and
+var bool adxsellCond = false
+adxsellCond := conditionType == 'ADX' and useDMI and anyTFSelected and strategy.position_size == 0 and 
      (adxsellCond1m and adxsellCond2m and adxsellCond3m and adxsellCond5m and adxsellCond15m and
      adxsellCond30m and adxsellCond60m and adxsellCond240m and adxsellCondD)
 
