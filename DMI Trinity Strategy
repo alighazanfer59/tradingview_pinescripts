@@ -171,7 +171,7 @@ getDmiAdx(tfStr, enabled, len) =>
     var adxSell = true
 
     if enabled
-        [dip, din, adx] = request.security(syminfo.tickerid, tfStr, dmiWrapper(len))
+        [dip, din, adx] = request.security(syminfo.tickerid, tfStr, dmiWrapper(len), lookahead = barmerge.lookahead_off)
         dmiBuy := not na(dip) and not na(din) and dip > din and dip >= i_dmiThreshold
         dmiSell := not na(dip) and not na(din) and dip < din and din >= i_dmiThreshold
         adxBuy := not na(adx) and dip > din and adx >= i_adxThreshold
@@ -190,33 +190,71 @@ getDmiAdx(tfStr, enabled, len) =>
 [dipD, dinD, adxD, dmibuyCondD, dmisellCondD, adxbuyCondD, adxsellCondD] = getDmiAdx("D", tfD, i_dmiLength_tfD)
 
 // Final DMI Buy Condition
-var bool dmibuyCond = false
-dmibuyCond := conditionType == 'DMI' and useDMI and anyTFSelected and strategy.position_size == 0 and 
-     (dmibuyCond1m and dmibuyCond2m and dmibuyCond3m and dmibuyCond5m and dmibuyCond15m and
-     dmibuyCond30m and dmibuyCond60m and dmibuyCond240m and dmibuyCondD) and 
-     ((not dmibuyCond1m[1] and tf1) or (not dmibuyCond2m[1] and tf2) or (not dmibuyCond3m[1] and tf3) or
-     (not dmibuyCond5m[1] and tf5) or (not dmibuyCond15m[1] and tf15) or (not dmibuyCond30m[1] and tf30))
+bool dmibuyCond_curr = (dmibuyCond1m and dmibuyCond2m and dmibuyCond3m and dmibuyCond5m and dmibuyCond15m and
+     dmibuyCond30m and dmibuyCond60m and dmibuyCond240m and dmibuyCondD)
+
+bool dmibuyCond_prev = ((not dmibuyCond1m[1] and tf1) or
+                         (not dmibuyCond2m[1] and tf2) or
+                         (not dmibuyCond5m[1] and tf5) or
+                         (not dmibuyCond15m[1] and tf15) or
+                         (not dmibuyCond30m[1] and tf30) or
+                         (not dmibuyCond60m[1] and tf60) or
+                         (not dmibuyCond240m[1] and tf240) or
+                         (not dmibuyCondD[1] and tfD))
+
+dmibuyCond = conditionType == 'DMI' and useDMI and anyTFSelected and strategy.position_size == 0 and 
+     dmibuyCond_curr and dmibuyCond_prev
 
 // Final DMI Sell Condition
-var bool dmisellCond = false
-dmisellCond := conditionType == 'DMI' and useDMI and anyTFSelected and strategy.position_size == 0 and 
-     (dmisellCond1m and dmisellCond2m and dmisellCond3m and dmisellCond5m and dmisellCond15m and
-     dmisellCond30m and dmisellCond60m and dmisellCond240m and dmisellCondD) and 
-     ((not dmisellCond1m[1] and tf1) or (not dmisellCond2m[1] and tf2) or (not dmisellCond3m[1] and tf3) or
-     (not dmisellCond5m[1] and tf5) or (not dmisellCond15m[1] and tf15) or (not dmisellCond30m[1] and tf30))
+bool dmisellCond_curr = (dmisellCond1m and dmisellCond2m and dmisellCond3m and dmisellCond5m and dmisellCond15m and
+     dmisellCond30m and dmisellCond60m and dmisellCond240m and dmisellCondD)
+
+bool dmisellCond_prev = ((not dmisellCond1m[1] and tf1) or
+                         (not dmisellCond2m[1] and tf2) or
+                         (not dmisellCond3m[1] and tf3) or
+                         (not dmisellCond5m[1] and tf5) or
+                         (not dmisellCond15m[1] and tf15) or
+                         (not dmisellCond30m[1] and tf30) or
+                         (not dmisellCond60m[1] and tf60) or
+                         (not dmisellCond240m[1] and tf240) or
+                         (not dmisellCondD[1] and tfD))
+
+dmisellCond = conditionType == 'DMI' and useDMI and anyTFSelected and strategy.position_size == 0 and 
+     dmisellCond_curr and dmisellCond_prev
 
 // Final ADX Buy Condition
-var bool adxbuyCond = false
-adxbuyCond := conditionType == 'ADX' and useDMI and anyTFSelected and strategy.position_size == 0 and 
-     (adxbuyCond1m and adxbuyCond2m and adxbuyCond3m and adxbuyCond5m and adxbuyCond15m and
+bool adxbuyCond_curr = (adxbuyCond1m and adxbuyCond2m and adxbuyCond3m and adxbuyCond5m and adxbuyCond15m and
      adxbuyCond30m and adxbuyCond60m and adxbuyCond240m and adxbuyCondD)
 
+bool adxbuyCond_prev = ((not adxbuyCond1m[1] and tf1) or
+                         (not adxbuyCond2m[1] and tf2) or
+                         (not adxbuyCond3m[1] and tf3) or
+                         (not adxbuyCond5m[1] and tf5) or
+                         (not adxbuyCond15m[1] and tf15) or
+                         (not adxbuyCond30m[1] and tf30) or
+                         (not adxbuyCond60m[1] and tf60) or
+                         (not adxbuyCond240m[1] and tf240) or
+                         (not adxbuyCondD[1] and tfD))
+
+adxbuyCond = conditionType == 'ADX' and useDMI and anyTFSelected and strategy.position_size == 0 and 
+     adxbuyCond_curr and adxbuyCond_prev
+
 // Final ADX Sell Condition
-var bool adxsellCond = false
-adxsellCond := conditionType == 'ADX' and useDMI and anyTFSelected and strategy.position_size == 0 and 
-     (adxsellCond1m and adxsellCond2m and adxsellCond3m and adxsellCond5m and adxsellCond15m and
+bool adxsellCond_curr = (adxsellCond1m and adxsellCond2m and adxsellCond3m and adxsellCond5m and adxsellCond15m and
      adxsellCond30m and adxsellCond60m and adxsellCond240m and adxsellCondD)
 
+bool adxsellCond_prev = ((not adxsellCond1m[1] and tf1) or
+                         (not adxsellCond2m[1] and tf2) or
+                         (not adxsellCond3m[1] and tf3) or
+                         (not adxsellCond5m[1] and tf5) or
+                         (not adxsellCond15m[1] and tf15) or
+                         (not adxsellCond30m[1] and tf30) or
+                         (not adxsellCond60m[1] and tf60) or
+                         (not adxsellCond240m[1] and tf240) or
+                         (not adxsellCondD[1] and tfD))
+
+adxsellCond = conditionType == 'ADX' and useDMI and anyTFSelected and strategy.position_size == 0 and 
+     adxsellCond_curr and adxsellCond_prev
 
 // TASC continuation signal
 barsSinceNewTrend = ta.barssince(isNewTrend) + 1
@@ -227,12 +265,43 @@ TASC_Cont_buyCond = (st > st[1] and dir == -1 and trend_sw_high > trend_sw_high[
 TASC_Cont_sellCond = (st < st[1] and dir == 1 and trend_sw_low < trend_sw_low[1]) and useTASC_CE
 
 // =============================================================================== ENTRY SIGNALS ====================================================================================== //
-// Existing signal definitions
-buySignal = (TASCbuyCondition or TASC_Cont_buyCond or dmibuyCond or adxbuyCond) and 
-     can_trade_today and time_sess_good and strategy.position_size == 0
-     
-sellSignal = (TASCsellConditon or TASC_Cont_sellCond or dmisellCond or adxsellCond) and
-     can_trade_today and time_sess_good and strategy.position_size == 0
+// Final Trading signals
+bool buySignal = false
+if useDMI and useTASC_SE and useTASC_CE
+    buySignal := dmibuyCond_curr and (TASCbuyCondition or TASC_Cont_buyCond) and can_trade_today and time_sess_good and strategy.position_size == 0
+else if useDMI and useTASC_SE
+    buySignal := dmibuyCond_curr and TASCbuyCondition and can_trade_today and time_sess_good and strategy.position_size == 0
+else if useDMI and useTASC_CE
+    buySignal := dmibuyCond and TASC_Cont_buyCond and can_trade_today and time_sess_good and strategy.position_size == 0
+else if useTASC_SE and useTASC_CE
+    buySignal := (TASCbuyCondition or TASC_Cont_buyCond) and can_trade_today and time_sess_good and strategy.position_size == 0
+else if useDMI
+    buySignal := dmibuyCond and can_trade_today and time_sess_good and strategy.position_size == 0
+else if useTASC_SE
+    buySignal := TASCbuyCondition and can_trade_today and time_sess_good and strategy.position_size == 0
+else if useTASC_CE
+    buySignal := TASC_Cont_buyCond and can_trade_today and time_sess_good and strategy.position_size == 0
+else
+    buySignal := false
+
+// Final Trading signals - Sell
+bool sellSignal = false
+if useDMI and useTASC_SE and useTASC_CE
+    sellSignal := dmisellCond_curr and (TASCsellConditon or TASC_Cont_sellCond) and can_trade_today and time_sess_good and strategy.position_size == 0
+else if useDMI and useTASC_SE
+    sellSignal := dmisellCond_curr and TASCsellConditon and can_trade_today and time_sess_good and strategy.position_size == 0
+else if useDMI and useTASC_CE
+    sellSignal := dmisellCond and TASC_Cont_sellCond and can_trade_today and time_sess_good and strategy.position_size == 0
+else if useTASC_SE and useTASC_CE
+    sellSignal := (TASCsellConditon or TASC_Cont_sellCond) and can_trade_today and time_sess_good and strategy.position_size == 0
+else if useDMI
+    sellSignal := dmisellCond and can_trade_today and time_sess_good and strategy.position_size == 0
+else if useTASC_SE
+    sellSignal := TASCsellConditon and can_trade_today and time_sess_good and strategy.position_size == 0
+else if useTASC_CE
+    sellSignal := TASC_Cont_sellCond and can_trade_today and time_sess_good and strategy.position_size == 0
+else
+    sellSignal := false
 
 // Save stops & targets
 var float longStop = na
