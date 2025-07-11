@@ -171,7 +171,7 @@ getDmiAdx(tfStr, enabled, len) =>
     var adxSell = true
 
     if enabled
-        [dip, din, adx] = request.security(syminfo.tickerid, tfStr, dmiWrapper(len), lookahead = barmerge.lookahead_off)
+        [dip, din, adx] = request.security(syminfo.tickerid, tfStr, dmiWrapper(len), barmerge.gaps_off, barmerge.lookahead_on)
         dmiBuy := not na(dip) and not na(din) and dip > din and dip >= i_dmiThreshold
         dmiSell := not na(dip) and not na(din) and dip < din and din >= i_dmiThreshold
         adxBuy := not na(adx) and dip > din and adx >= i_adxThreshold
@@ -268,38 +268,38 @@ TASC_Cont_sellCond = (st < st[1] and dir == 1 and trend_sw_low < trend_sw_low[1]
 // Final Trading signals
 bool buySignal = false
 if useDMI and useTASC_SE and useTASC_CE
-    buySignal := dmibuyCond_curr and (TASCbuyCondition or TASC_Cont_buyCond) and can_trade_today and time_sess_good and strategy.position_size == 0
+    buySignal := dmibuyCond and (TASCbuyCondition or TASC_Cont_buyCond) and can_trade_today and time_sess_good and strategy.position_size == 0
 else if useDMI and useTASC_SE
-    buySignal := dmibuyCond_curr and TASCbuyCondition and can_trade_today and time_sess_good and strategy.position_size == 0
+    buySignal := dmibuyCond and TASCbuyCondition and can_trade_today and time_sess_good and strategy.position_size == 0
 else if useDMI and useTASC_CE
     buySignal := dmibuyCond and TASC_Cont_buyCond and can_trade_today and time_sess_good and strategy.position_size == 0
 else if useTASC_SE and useTASC_CE
-    buySignal := (TASCbuyCondition or TASC_Cont_buyCond) and can_trade_today and time_sess_good and strategy.position_size == 0
+    buySignal := (TASCbuyCondition or TASC_Cont_buyCond) and dmibuyCond_curr and can_trade_today and time_sess_good and strategy.position_size == 0
 else if useDMI
     buySignal := dmibuyCond and can_trade_today and time_sess_good and strategy.position_size == 0
 else if useTASC_SE
-    buySignal := TASCbuyCondition and can_trade_today and time_sess_good and strategy.position_size == 0
+    buySignal := TASCbuyCondition and dmibuyCond_curr and can_trade_today and time_sess_good and strategy.position_size == 0
 else if useTASC_CE
-    buySignal := TASC_Cont_buyCond and can_trade_today and time_sess_good and strategy.position_size == 0
+    buySignal := TASC_Cont_buyCond and dmibuyCond_curr and can_trade_today and time_sess_good and strategy.position_size == 0
 else
     buySignal := false
 
 // Final Trading signals - Sell
 bool sellSignal = false
 if useDMI and useTASC_SE and useTASC_CE
-    sellSignal := dmisellCond_curr and (TASCsellConditon or TASC_Cont_sellCond) and can_trade_today and time_sess_good and strategy.position_size == 0
+    sellSignal := dmisellCond and (TASCsellConditon or TASC_Cont_sellCond) and can_trade_today and time_sess_good and strategy.position_size == 0
 else if useDMI and useTASC_SE
-    sellSignal := dmisellCond_curr and TASCsellConditon and can_trade_today and time_sess_good and strategy.position_size == 0
+    sellSignal := dmisellCond and TASCsellConditon and can_trade_today and time_sess_good and strategy.position_size == 0
 else if useDMI and useTASC_CE
     sellSignal := dmisellCond and TASC_Cont_sellCond and can_trade_today and time_sess_good and strategy.position_size == 0
 else if useTASC_SE and useTASC_CE
-    sellSignal := (TASCsellConditon or TASC_Cont_sellCond) and can_trade_today and time_sess_good and strategy.position_size == 0
+    sellSignal := (TASCsellConditon or TASC_Cont_sellCond) and dmisellCond_curr and can_trade_today and time_sess_good and strategy.position_size == 0
 else if useDMI
     sellSignal := dmisellCond and can_trade_today and time_sess_good and strategy.position_size == 0
 else if useTASC_SE
-    sellSignal := TASCsellConditon and can_trade_today and time_sess_good and strategy.position_size == 0
+    sellSignal := TASCsellConditon and dmisellCond_curr and can_trade_today and time_sess_good and strategy.position_size == 0
 else if useTASC_CE
-    sellSignal := TASC_Cont_sellCond and can_trade_today and time_sess_good and strategy.position_size == 0
+    sellSignal := TASC_Cont_sellCond and dmisellCond_curr and can_trade_today and time_sess_good and strategy.position_size == 0
 else
     sellSignal := false
 
