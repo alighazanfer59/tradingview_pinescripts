@@ -14,35 +14,43 @@ i_mult = input.float(3.0, "Multiplier", minval=0.1, step=0.1, group = "TASC Indi
 //--- 1. Timeframe Selection ---//
 tf1 = input.bool(false, "1 Minutes:     ", group="Timeframe Selection", inline="1", display = display.none)
 i_dmiLength_tf1 = input.int(9, "Length", minval=1, group="Timeframe Selection", inline = "1")
-// i_dmiSmoothing_tf1 = input.int(9, "W. Avg.", minval=1, group="Timeframe Selection", inline = "1")
+i_dmiThreshold_tf1 = input.float(25, "Thresh", minval=1, group="Timeframe Selection", inline = "1")
+
 tf2 = input.bool(false, "2 Minutes:     ", group="Timeframe Selection", inline="2", display = display.none)
 i_dmiLength_tf2 = input.int(14, "Length", minval=1, group="Timeframe Selection", inline = "2")
-// i_dmiSmoothing_tf2 = input.int(14, "W. Avg.", minval=1, group="Timeframe Selection", inline = "1")
+i_dmiThreshold_tf2 = input.float(25, "Thresh", minval=1, group="Timeframe Selection", inline = "2")
+
 tf3 = input.bool(false, "3 Minutes:     ", group="Timeframe Selection", inline="3", display = display.none)
 i_dmiLength_tf3 = input.int(14, "Length", minval=1, group="Timeframe Selection", inline = "3")
-// i_dmiSmoothing_tf3 = input.int(14, "W.Avg.", minval=1, group="Timeframe Selection", inline = "2")
+i_dmiThreshold_tf3 = input.float(25, "Thresh", minval=1, group="Timeframe Selection", inline = "3")
+
 tf5 = input.bool(false, "5 Minutes:      ", group="Timeframe Selection", inline="4", display = display.none)
 i_dmiLength_tf5 = input.int(14, "Length", minval=1, group="Timeframe Selection", inline = "4")
-// i_dmiSmoothing_tf5 = input.int(14, "W.Avg.", minval=1, group="Timeframe Selection", inline = "3")
+i_dmiThreshold_tf5 = input.float(25, "Thresh", minval=1, group="Timeframe Selection", inline = "4")
+
 tf15 = input.bool(false, "15 Minutes:        ", group="Timeframe Selection", inline="5", display = display.none)
 i_dmiLength_tf15 = input.int(14, "Length", minval=1, group="Timeframe Selection", inline = "5")
-// i_dmiSmoothing_tf15 = input.int(14, "W.Avg.", minval=1, group="Timeframe Selection", inline = "4")
+i_dmiThreshold_tf15 = input.float(25, "Thresh", minval=1, group="Timeframe Selection", inline = "5")
+
 tf30 = input.bool(false, "30 Minutes:       ", group="Timeframe Selection", inline="6", display = display.none)
 i_dmiLength_tf30 = input.int(14, "Length", minval=1, group="Timeframe Selection", inline = "6")
-// i_dmiSmoothing_tf30 = input.int(14, "W.Avg.", minval=1, group="Timeframe Selection", inline = "5")
+i_dmiThreshold_tf30 = input.float(25, "Thresh", minval=1, group="Timeframe Selection", inline = "6")
+
 tf60 = input.bool(false, "1 Hour:       ", group="Timeframe Selection", inline="7", display = display.none)
 i_dmiLength_tf60 = input.int(14, "Length", minval=1, group="Timeframe Selection", inline = "7")
-// i_dmiSmoothing_tf60 = input.int(14, "W.Avg.", minval=1, group="Timeframe Selection", inline = "6")
+i_dmiThreshold_tf60 = input.float(25, "Thresh", minval=1, group="Timeframe Selection", inline = "7")
+
 tf240 = input.bool(false, "4 Hours:     ", group="Timeframe Selection", inline="8", display = display.none)
 i_dmiLength_tf240 = input.int(14, "Length", minval=1, group="Timeframe Selection", inline = "8")
-// i_dmiSmoothing_tf240 = input.int(14, "W.Avg.", minval=1, group="Timeframe Selection", inline = "7")
+i_dmiThreshold_tf240 = input.float(25, "Thresh", minval=1, group="Timeframe Selection", inline = "8")
+
 tfD = input.bool(false, "Daily:     ", group="Timeframe Selection", inline="9", display = display.none)
 i_dmiLength_tfD = input.int(14, "Length", minval=1, group="Timeframe Selection", inline = "9")
-// i_dmiSmoothing_tfD = input.int(14, "W.Avg.", minval=1, group="Timeframe Selection", inline = "8")
+i_dmiThreshold_tfD = input.float(25, "Thresh", minval=1, group="Timeframe Selection", inline = "9")
 bool anyTFSelected = tf1 or tf2 or tf3 or tf5 or tf15 or tf30 or tf60 or tf240 or tfD
 
-//--- 2. Condition Type Selection ---//
-conditionType = input.string("DMI", "Condition Type", options=["DMI", "ADX"], group="Strategy Settings")
+//--- 2. Filter Environment Selection ---//
+conditionType = input.string("DMI", "Filter Environment Type", options=["DMI", "ADX"], group="Strategy Settings")
 
 //--- 4. Trigger Conditions ---//
 useTASC_SE = input.bool(false, "TASC Change of Structure entry signal", group="Trigger Settings")
@@ -205,34 +213,35 @@ var bool dmi240m_bear_val  = true
 var bool dmiD_bull_val     = true
 var bool dmiD_bear_val     = true
 
+
 // Assign results unconditionally on every bar to prevent "might not execute" warnings.
 if tf1
-    dmi1m_bull_val   := checkDmiCondition("1", i_dmiLength_tf1, i_dmiThreshold, true)
-    dmi1m_bear_val   := checkDmiCondition("1", i_dmiLength_tf1, i_dmiThreshold, false)
+    dmi1m_bull_val   := checkDmiCondition("1", i_dmiLength_tf1, i_dmiThreshold_tf1, true)
+    dmi1m_bear_val   := checkDmiCondition("1", i_dmiLength_tf1, i_dmiThreshold_tf1, false)
 if tf2
-    dmi2m_bull_val   := checkDmiCondition("2", i_dmiLength_tf2, i_dmiThreshold, true)
-    dmi2m_bear_val   := checkDmiCondition("2", i_dmiLength_tf2, i_dmiThreshold, false)
+    dmi2m_bull_val   := checkDmiCondition("2", i_dmiLength_tf2, i_dmiThreshold_tf2, true)
+    dmi2m_bear_val   := checkDmiCondition("2", i_dmiLength_tf2, i_dmiThreshold_tf2, false)
 if tf3
-    dmi3m_bull_val   := checkDmiCondition("3", i_dmiLength_tf3, i_dmiThreshold, true)
-    dmi3m_bear_val   := checkDmiCondition("3", i_dmiLength_tf3, i_dmiThreshold, false)
+    dmi3m_bull_val   := checkDmiCondition("3", i_dmiLength_tf3, i_dmiThreshold_tf3, true)
+    dmi3m_bear_val   := checkDmiCondition("3", i_dmiLength_tf3, i_dmiThreshold_tf3, false)
 if tf5
-    dmi5m_bull_val   := checkDmiCondition("5", i_dmiLength_tf5, i_dmiThreshold, true)
-    dmi5m_bear_val   := checkDmiCondition("5", i_dmiLength_tf5, i_dmiThreshold, false)
+    dmi5m_bull_val   := checkDmiCondition("5", i_dmiLength_tf5, i_dmiThreshold_tf5, true)
+    dmi5m_bear_val   := checkDmiCondition("5", i_dmiLength_tf5, i_dmiThreshold_tf5, false)
 if tf15
-    dmi15m_bull_val  := checkDmiCondition("15", i_dmiLength_tf15, i_dmiThreshold, true)
-    dmi15m_bear_val  := checkDmiCondition("15", i_dmiLength_tf15, i_dmiThreshold, false)
+    dmi15m_bull_val  := checkDmiCondition("15", i_dmiLength_tf15, i_dmiThreshold_tf15, true)
+    dmi15m_bear_val  := checkDmiCondition("15", i_dmiLength_tf15, i_dmiThreshold_tf15, false)
 if tf30
-    dmi30m_bull_val  := checkDmiCondition("30", i_dmiLength_tf30, i_dmiThreshold, true)
-    dmi30m_bear_val  := checkDmiCondition("30", i_dmiLength_tf30, i_dmiThreshold, false)
+    dmi30m_bull_val  := checkDmiCondition("30", i_dmiLength_tf30, i_dmiThreshold_tf30, true)
+    dmi30m_bear_val  := checkDmiCondition("30", i_dmiLength_tf30, i_dmiThreshold_tf30, false)
 if tf60
-    dmi60m_bull_val  := checkDmiCondition("60", i_dmiLength_tf60, i_dmiThreshold, true)
-    dmi60m_bear_val  := checkDmiCondition("60", i_dmiLength_tf60, i_dmiThreshold, false)
+    dmi60m_bull_val  := checkDmiCondition("60", i_dmiLength_tf60, i_dmiThreshold_tf60, true)
+    dmi60m_bear_val  := checkDmiCondition("60", i_dmiLength_tf60, i_dmiThreshold_tf60, false)
 if tf240
-    dmi240m_bull_val := checkDmiCondition("240", i_dmiLength_tf240, i_dmiThreshold, true)
-    dmi240m_bear_val := checkDmiCondition("240", i_dmiLength_tf240, i_dmiThreshold, false)
+    dmi240m_bull_val := checkDmiCondition("240", i_dmiLength_tf240, i_dmiThreshold_tf240, true)
+    dmi240m_bear_val := checkDmiCondition("240", i_dmiLength_tf240, i_dmiThreshold_tf240, false)
 if tfD
-    dmiD_bull_val    := checkDmiCondition("D", i_dmiLength_tfD, i_dmiThreshold, true)
-    dmiD_bear_val    := checkDmiCondition("D", i_dmiLength_tfD, i_dmiThreshold, false)
+    dmiD_bull_val    := checkDmiCondition("D", i_dmiLength_tfD, i_dmiThreshold_tfD, true)
+    dmiD_bear_val    := checkDmiCondition("D", i_dmiLength_tfD, i_dmiThreshold_tfD, false)
 
 bool dmibuyCond_curr = (
      dmi1m_bull_val and dmi2m_bull_val and dmi3m_bull_val and dmi5m_bull_val and
@@ -251,8 +260,7 @@ bool dmibuyCond_prev = (
      (not dmiD_bull_val[1] and tfD)
  )
 
-dmibuyCond = conditionType == 'DMI' and useDMI and anyTFSelected and strategy.position_size == 0 and 
-     dmibuyCond_curr and dmibuyCond_prev
+dmibuyTrigger = dmibuyCond_curr and dmibuyCond_prev
 
 bool dmisellCond_curr = (
      dmi1m_bear_val and dmi2m_bear_val and dmi3m_bear_val and dmi5m_bear_val and
@@ -271,45 +279,84 @@ bool dmisellCond_prev = (
      (not dmiD_bear_val[1] and tfD)
  )
 
-dmisellCond = conditionType == 'DMI' and useDMI and anyTFSelected and strategy.position_size == 0 and 
-     dmisellCond_curr and dmisellCond_prev
+dmisellTrigger = dmisellCond_curr and dmisellCond_prev
 
+// Initialize ADX bool filters for each timeframe
+checkAdxCondition(string timeframe, int diLength, float threshold) =>
+    [_, _, adx] = request.security(syminfo.tickerid, timeframe, dmiWrapper(diLength), barmerge.gaps_off, barmerge.lookahead_on)
+    adx >= threshold
 
-// // Final ADX Buy Condition
-// bool adxbuyCond_curr = (adxbuyCond1m and adxbuyCond2m and adxbuyCond3m and adxbuyCond5m and adxbuyCond15m and
-//      adxbuyCond30m and adxbuyCond60m and adxbuyCond240m and adxbuyCondD)
+var bool adx1m_bull_val    = true
+var bool adx1m_bear_val    = true
 
-// bool adxbuyCond_prev = ((not adxbuyCond1m[1] and tf1) or
-//                          (not adxbuyCond2m[1] and tf2) or
-//                          (not adxbuyCond3m[1] and tf3) or
-//                          (not adxbuyCond5m[1] and tf5) or
-//                          (not adxbuyCond15m[1] and tf15) or
-//                          (not adxbuyCond30m[1] and tf30) or
-//                          (not adxbuyCond60m[1] and tf60) or
-//                          (not adxbuyCond240m[1] and tf240) or
-//                          (not adxbuyCondD[1] and tfD))
+var bool adx2m_bull_val    = true
+var bool adx2m_bear_val    = true
 
-// adxbuyCond = conditionType == 'ADX' and useDMI and anyTFSelected and strategy.position_size == 0 and 
-//      adxbuyCond_curr and adxbuyCond_prev
+var bool adx3m_bull_val    = true
+var bool adx3m_bear_val    = true
 
-// // Final ADX Sell Condition
-// bool adxsellCond_curr = (adxsellCond1m and adxsellCond2m and adxsellCond3m and adxsellCond5m and adxsellCond15m and
-//      adxsellCond30m and adxsellCond60m and adxsellCond240m and adxsellCondD)
+var bool adx5m_bull_val    = true
+var bool adx5m_bear_val    = true
 
-// bool adxsellCond_prev = ((not adxsellCond1m[1] and tf1) or
-//                          (not adxsellCond2m[1] and tf2) or
-//                          (not adxsellCond3m[1] and tf3) or
-//                          (not adxsellCond5m[1] and tf5) or
-//                          (not adxsellCond15m[1] and tf15) or
-//                          (not adxsellCond30m[1] and tf30) or
-//                          (not adxsellCond60m[1] and tf60) or
-//                          (not adxsellCond240m[1] and tf240) or
-//                          (not adxsellCondD[1] and tfD))
+var bool adx15m_bull_val   = true
+var bool adx15m_bear_val   = true
 
-// adxsellCond = conditionType == 'ADX' and useDMI and anyTFSelected and strategy.position_size == 0 and 
-//      adxsellCond_curr and adxsellCond_prev
+var bool adx30m_bull_val   = true
+var bool adx30m_bear_val   = true
 
+var bool adx60m_bull_val   = true
+var bool adx60m_bear_val   = true
+
+var bool adx240m_bull_val  = true
+var bool adx240m_bear_val  = true
+
+var bool adxD_bull_val     = true
+var bool adxD_bear_val     = true
+
+if tf1 and conditionType == "ADX"
+    adx1m_bull_val := checkAdxCondition("1", i_dmiLength_tf1, i_dmiThreshold_tf1)
+    adx1m_bear_val := checkAdxCondition("1", i_dmiLength_tf1, i_dmiThreshold_tf1)
+
+if tf2 and conditionType == "ADX"
+    adx2m_bull_val := checkAdxCondition("2", i_dmiLength_tf2, i_dmiThreshold_tf2)
+    adx2m_bear_val := checkAdxCondition("2", i_dmiLength_tf2, i_dmiThreshold_tf2)
+
+if tf3 and conditionType == "ADX"
+    adx3m_bull_val := checkAdxCondition("3", i_dmiLength_tf3, i_dmiThreshold_tf3)
+    adx3m_bear_val := checkAdxCondition("3", i_dmiLength_tf3, i_dmiThreshold_tf3)
+
+if tf5 and conditionType == "ADX"
+    adx5m_bull_val := checkAdxCondition("5", i_dmiLength_tf5, i_dmiThreshold_tf5)
+    adx5m_bear_val := checkAdxCondition("5", i_dmiLength_tf5, i_dmiThreshold_tf5)
+
+if tf15 and conditionType == "ADX"
+    adx15m_bull_val := checkAdxCondition("15", i_dmiLength_tf15, i_dmiThreshold_tf15)
+    adx15m_bear_val := checkAdxCondition("15", i_dmiLength_tf15, i_dmiThreshold_tf15)
+
+if tf30 and conditionType == "ADX"
+    adx30m_bull_val := checkAdxCondition("30", i_dmiLength_tf30, i_dmiThreshold_tf30)
+    adx30m_bear_val := checkAdxCondition("30", i_dmiLength_tf30, i_dmiThreshold_tf30)
+
+if tf60 and conditionType == "ADX"
+    adx60m_bull_val := checkAdxCondition("60", i_dmiLength_tf60, i_dmiThreshold_tf60)
+    adx60m_bear_val := checkAdxCondition("60", i_dmiLength_tf60, i_dmiThreshold_tf60)
+
+if tf240 and conditionType == "ADX"
+    adx240m_bull_val := checkAdxCondition("240", i_dmiLength_tf240, i_dmiThreshold_tf240)
+    adx240m_bear_val := checkAdxCondition("240", i_dmiLength_tf240, i_dmiThreshold_tf240)
+
+if tfD and conditionType == "ADX"
+    adxD_bull_val := checkAdxCondition("D", i_dmiLength_tfD, i_dmiThreshold_tfD)
+    adxD_bear_val := checkAdxCondition("D", i_dmiLength_tfD, i_dmiThreshold_tfD)
+
+// Final ADX Buy Condition
+bool adxbuyCond = (adx1m_bull_val and adx2m_bull_val and adx3m_bull_val and adx5m_bull_val and adx15m_bull_val and
+     adx30m_bull_val and adx60m_bull_val and adx240m_bull_val and adxD_bull_val)
+// Final ADX Sell Condition
+bool adxsellCond = (adx1m_bear_val and adx2m_bear_val and adx3m_bear_val and adx5m_bear_val and adx15m_bear_val and
+     adx30m_bear_val and adx60m_bear_val and adx240m_bear_val and adxD_bear_val)
 // TASC continuation signal
+
 barsSinceNewTrend = ta.barssince(isNewTrend) + 1
 trend_sw_high = not na(barsSinceNewTrend) ? ta.highest(high, barsSinceNewTrend) : na
 trend_sw_low = not na(barsSinceNewTrend) ? ta.lowest(low, barsSinceNewTrend) : na
@@ -320,43 +367,45 @@ TASC_Cont_sellCond = (st < st[1] and dir == 1 and trend_sw_low < trend_sw_low[1]
 // =============================================================================== ENTRY SIGNALS ====================================================================================== //
 // Final Trading signals - Buy
 bool buySignal = false
+filteredBuyCond = conditionType == "DMI" ? dmibuyCond_curr : adxbuyCond
+
 if useDMI and useTASC_SE and useTASC_CE
-    buySignal := (dmibuyCond and close > open) and (TASCbuyCondition or TASC_Cont_buyCond) and can_trade_today and time_sess_good and strategy.position_size == 0
+    buySignal := (dmibuyTrigger and close > open) and (TASCbuyCondition or TASC_Cont_buyCond) and can_trade_today and time_sess_good and strategy.position_size == 0
 else if useDMI and useTASC_SE
-    buySignal := (dmibuyCond and close > open) and TASCbuyCondition and can_trade_today and time_sess_good and strategy.position_size == 0
+    buySignal := (dmibuyTrigger and close > open) and TASCbuyCondition and can_trade_today and time_sess_good and strategy.position_size == 0
 else if useDMI and useTASC_CE
-    buySignal := (dmibuyCond and close > open) and TASC_Cont_buyCond and can_trade_today and time_sess_good and strategy.position_size == 0
+    buySignal := (dmibuyTrigger and close > open) and TASC_Cont_buyCond and can_trade_today and time_sess_good and strategy.position_size == 0
 else if useTASC_SE and useTASC_CE
-    buySignal := (TASCbuyCondition or TASC_Cont_buyCond) and dmibuyCond_curr and can_trade_today and time_sess_good and strategy.position_size == 0
+    buySignal := (TASCbuyCondition or TASC_Cont_buyCond) and can_trade_today and time_sess_good and strategy.position_size == 0 and filteredBuyCond
 else if useDMI
-    buySignal := (dmibuyCond and close > open) and can_trade_today and time_sess_good and strategy.position_size == 0
+    buySignal := (dmibuyTrigger and close > open) and can_trade_today and time_sess_good and strategy.position_size == 0
 else if useTASC_SE
-    buySignal := TASCbuyCondition and dmibuyCond_curr and can_trade_today and time_sess_good and strategy.position_size == 0
+    buySignal := TASCbuyCondition and can_trade_today and time_sess_good and strategy.position_size == 0 and filteredBuyCond
 else if useTASC_CE
-    buySignal := TASC_Cont_buyCond and dmibuyCond_curr and can_trade_today and time_sess_good and strategy.position_size == 0
+    buySignal := TASC_Cont_buyCond and can_trade_today and time_sess_good and strategy.position_size == 0 and filteredBuyCond
 else
     buySignal := false
 
 // Final Trading signals - Sell
 bool sellSignal = false
+filteredSellCond = conditionType == "DMI" ? dmisellCond_curr : adxsellCond
+
 if useDMI and useTASC_SE and useTASC_CE
-    sellSignal := (dmisellCond and close < open) and (TASCsellConditon or TASC_Cont_sellCond) and can_trade_today and time_sess_good and strategy.position_size == 0
+    sellSignal := (dmisellTrigger and close < open) and (TASCsellConditon or TASC_Cont_sellCond) and can_trade_today and time_sess_good and strategy.position_size == 0
 else if useDMI and useTASC_SE
-    sellSignal := (dmisellCond and close < open) and TASCsellConditon and can_trade_today and time_sess_good and strategy.position_size == 0
+    sellSignal := (dmisellTrigger and close < open) and TASCsellConditon and can_trade_today and time_sess_good and strategy.position_size == 0
 else if useDMI and useTASC_CE
-    sellSignal := (dmisellCond and close < open) and TASC_Cont_sellCond and can_trade_today and time_sess_good and strategy.position_size == 0
+    sellSignal := (dmisellTrigger and close < open) and TASC_Cont_sellCond and can_trade_today and time_sess_good and strategy.position_size == 0
 else if useTASC_SE and useTASC_CE
-    sellSignal := (TASCsellConditon or TASC_Cont_sellCond) and dmisellCond_curr and can_trade_today and time_sess_good and strategy.position_size == 0
+    sellSignal := (TASCsellConditon or TASC_Cont_sellCond) and can_trade_today and time_sess_good and strategy.position_size == 0 and filteredSellCond
 else if useDMI
-    sellSignal := (dmisellCond and close < open) and can_trade_today and time_sess_good and strategy.position_size == 0
+    sellSignal := (dmisellTrigger and close < open) and can_trade_today and time_sess_good and strategy.position_size == 0
 else if useTASC_SE
-    sellSignal := TASCsellConditon and dmisellCond_curr and can_trade_today and time_sess_good and strategy.position_size == 0
+    sellSignal := TASCsellConditon and can_trade_today and time_sess_good and strategy.position_size == 0 and filteredSellCond
 else if useTASC_CE
-    sellSignal := TASC_Cont_sellCond and dmisellCond_curr and can_trade_today and time_sess_good and strategy.position_size == 0
+    sellSignal := TASC_Cont_sellCond and can_trade_today and time_sess_good and strategy.position_size == 0 and filteredSellCond
 else
     sellSignal := false
-
-
 
 // Save stops & targets
 var float longStop = na
@@ -445,8 +494,6 @@ plot(strategy.position_size < 0 ? shortTarget2 : na, color=color.green, style=pl
 
 
 // Debugging
-// var float dip5 = na, float din5 = na, float adx5 = na
-// var float dip15 = na, float din15 = na, float adx15 = na
 [dip, din, adx] = request.security(syminfo.tickerid, "1", dmiWrapper(i_dmiLength_tf1), barmerge.gaps_on, barmerge.lookahead_on)
 [dip5, din5, adx5] = request.security(syminfo.tickerid, "5", dmiWrapper(i_dmiLength_tf5), barmerge.gaps_on, barmerge.lookahead_on)
 [dip15, din15, adx15] = request.security(syminfo.tickerid, "15", dmiWrapper(i_dmiLength_tf15), barmerge.gaps_on, barmerge.lookahead_on)
@@ -463,24 +510,24 @@ plotchar(adx, 'adx', " ", color = color.blue)
 plotchar(adx5, 'adx5m', " ", color =  color.blue)
 plotchar(adx15, 'adx15m', " ", color =  color.blue)
 
-dmiSignal = conditionType == 'DMI' ? (dmibuyCond ? 1 : dmisellCond ? -1 : na) : na
+dmiSignal = conditionType == 'DMI' ? (dmibuyTrigger ? 1 : dmisellTrigger ? -1 : na) : na
 plotchar(dmiSignal, 'DMI Signal', "", color = dmiSignal == 1 ? color.green : dmiSignal == -1 ? color.red : na)
 tascSignal = useTASC_SE ? (TASCbuyCondition ? 1 : TASCsellConditon ? -1 : na) : na
 plotchar(tascSignal, 'TASC Entry Signal', "", color = tascSignal == 1 ? color.green : tascSignal == -1 ? color.red : na)
-// adxSignal = conditionType == 'ADX' ? (adxbuyCond ? 1 : adxsellCond ? -1 : na) : na
-// plotchar(adxSignal, 'ADX Signal', "", color = adxSignal == 1 ? color.green : adxSignal == -1 ? color.red : na)
+adxSignal = conditionType == 'ADX' ? (adxbuyCond ? 1 : adxsellCond ? -1 : na) : na
+plotchar(adxSignal, 'ADX Signal', "", color = adxSignal == 1 ? color.green : adxSignal == -1 ? color.red : na)
 
-plotchar(dmibuyCond, 'dmibuyCond', " ")
-plotchar(dmibuyCond[1], 'dmibuyCond[1]', " ")
+plotchar(dmibuyTrigger, 'dmibuyCond', " ")
+plotchar(dmibuyTrigger[1], 'dmibuyCond[1]', " ")
 
 // --- Buy Continuation Signal ---
-show_TASC_CE_buy = useTASC_CE and TASC_Cont_buyCond and strategy.position_size == 0 and time_sess_good
+show_TASC_CE_buy = useTASC_CE and TASC_Cont_buyCond and strategy.position_size == 0 and time_sess_good and buySignal
 plotshape(show_TASC_CE_buy, title="TASC Cont. Buy Signal", text="Cont. Buy",
      style=shape.labeldown, location=location.abovebar,
      color=color.new(color.green, 0), textcolor=color.white, size=size.small)
 
 // --- Sell Continuation Signal ---
-show_TASC_CE_sell = useTASC_CE and TASC_Cont_sellCond and strategy.position_size == 0 and time_sess_good
+show_TASC_CE_sell = useTASC_CE and TASC_Cont_sellCond and strategy.position_size == 0 and time_sess_good and sellSignal
 plotshape(show_TASC_CE_sell, title="TASC Cont. Sell Signal", text="Cont. Sell",
      style=shape.labelup, location=location.belowbar,
      color=color.new(color.red, 0), textcolor=color.white, size=size.small)
